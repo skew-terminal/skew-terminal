@@ -14,7 +14,244 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      markets: {
+        Row: {
+          category: Database["public"]["Enums"]["market_category"]
+          created_at: string
+          description: string | null
+          id: string
+          image_url: string | null
+          resolution_date: string | null
+          slug: string
+          status: Database["public"]["Enums"]["market_status"]
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          category?: Database["public"]["Enums"]["market_category"]
+          created_at?: string
+          description?: string | null
+          id?: string
+          image_url?: string | null
+          resolution_date?: string | null
+          slug: string
+          status?: Database["public"]["Enums"]["market_status"]
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          category?: Database["public"]["Enums"]["market_category"]
+          created_at?: string
+          description?: string | null
+          id?: string
+          image_url?: string | null
+          resolution_date?: string | null
+          slug?: string
+          status?: Database["public"]["Enums"]["market_status"]
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      prices: {
+        Row: {
+          created_at: string
+          id: string
+          market_id: string
+          no_price: number
+          platform: Database["public"]["Enums"]["platform"]
+          recorded_at: string
+          total_volume: number | null
+          volume_24h: number | null
+          yes_price: number
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          market_id: string
+          no_price: number
+          platform: Database["public"]["Enums"]["platform"]
+          recorded_at?: string
+          total_volume?: number | null
+          volume_24h?: number | null
+          yes_price: number
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          market_id?: string
+          no_price?: number
+          platform?: Database["public"]["Enums"]["platform"]
+          recorded_at?: string
+          total_volume?: number | null
+          volume_24h?: number | null
+          yes_price?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "prices_market_id_fkey"
+            columns: ["market_id"]
+            isOneToOne: false
+            referencedRelation: "markets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      spreads: {
+        Row: {
+          buy_platform: Database["public"]["Enums"]["platform"]
+          buy_price: number
+          created_at: string
+          detected_at: string
+          expires_at: string | null
+          id: string
+          is_active: boolean
+          market_id: string
+          potential_profit: number | null
+          sell_platform: Database["public"]["Enums"]["platform"]
+          sell_price: number
+          skew_percentage: number
+        }
+        Insert: {
+          buy_platform: Database["public"]["Enums"]["platform"]
+          buy_price: number
+          created_at?: string
+          detected_at?: string
+          expires_at?: string | null
+          id?: string
+          is_active?: boolean
+          market_id: string
+          potential_profit?: number | null
+          sell_platform: Database["public"]["Enums"]["platform"]
+          sell_price: number
+          skew_percentage: number
+        }
+        Update: {
+          buy_platform?: Database["public"]["Enums"]["platform"]
+          buy_price?: number
+          created_at?: string
+          detected_at?: string
+          expires_at?: string | null
+          id?: string
+          is_active?: boolean
+          market_id?: string
+          potential_profit?: number | null
+          sell_platform?: Database["public"]["Enums"]["platform"]
+          sell_price?: number
+          skew_percentage?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "spreads_market_id_fkey"
+            columns: ["market_id"]
+            isOneToOne: false
+            referencedRelation: "markets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      whale_trades: {
+        Row: {
+          action: string
+          amount: number
+          created_at: string
+          executed_at: string
+          id: string
+          market_id: string | null
+          price: number | null
+          side: string
+          tx_hash: string | null
+          wallet_id: string
+        }
+        Insert: {
+          action: string
+          amount: number
+          created_at?: string
+          executed_at?: string
+          id?: string
+          market_id?: string | null
+          price?: number | null
+          side: string
+          tx_hash?: string | null
+          wallet_id: string
+        }
+        Update: {
+          action?: string
+          amount?: number
+          created_at?: string
+          executed_at?: string
+          id?: string
+          market_id?: string | null
+          price?: number | null
+          side?: string
+          tx_hash?: string | null
+          wallet_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "whale_trades_market_id_fkey"
+            columns: ["market_id"]
+            isOneToOne: false
+            referencedRelation: "markets"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "whale_trades_wallet_id_fkey"
+            columns: ["wallet_id"]
+            isOneToOne: false
+            referencedRelation: "whale_wallets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      whale_wallets: {
+        Row: {
+          address: string
+          chain: string
+          created_at: string
+          id: string
+          is_tracked: boolean
+          label: string | null
+          last_active_at: string | null
+          pnl_24h: number | null
+          pnl_change: number | null
+          total_pnl: number | null
+          trade_count: number | null
+          updated_at: string
+          win_rate: number | null
+        }
+        Insert: {
+          address: string
+          chain?: string
+          created_at?: string
+          id?: string
+          is_tracked?: boolean
+          label?: string | null
+          last_active_at?: string | null
+          pnl_24h?: number | null
+          pnl_change?: number | null
+          total_pnl?: number | null
+          trade_count?: number | null
+          updated_at?: string
+          win_rate?: number | null
+        }
+        Update: {
+          address?: string
+          chain?: string
+          created_at?: string
+          id?: string
+          is_tracked?: boolean
+          label?: string | null
+          last_active_at?: string | null
+          pnl_24h?: number | null
+          pnl_change?: number | null
+          total_pnl?: number | null
+          trade_count?: number | null
+          updated_at?: string
+          win_rate?: number | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
@@ -23,7 +260,9 @@ export type Database = {
       [_ in never]: never
     }
     Enums: {
-      [_ in never]: never
+      market_category: "crypto" | "politics" | "sports" | "economy" | "other"
+      market_status: "active" | "resolved" | "suspended"
+      platform: "polymarket" | "kalshi" | "drift" | "other"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +389,10 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      market_category: ["crypto", "politics", "sports", "economy", "other"],
+      market_status: ["active", "resolved", "suspended"],
+      platform: ["polymarket", "kalshi", "drift", "other"],
+    },
   },
 } as const
