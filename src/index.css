@@ -39,7 +39,7 @@
     --input: 0 0% 100% / 0.08;
     --ring: 16 100% 50%;
 
-    --radius: 0rem;
+    --radius: 0.125rem;
 
     /* Custom SKEW tokens */
     --skew-angle: -5deg;
@@ -170,11 +170,11 @@
   }
 
   .data-table th {
-    @apply text-left text-muted-foreground uppercase text-xs tracking-wider py-3 px-4 border-b border-border;
+    @apply text-left text-muted-foreground uppercase text-[10px] tracking-wider py-1.5 px-2 border-b border-border;
   }
 
   .data-table td {
-    @apply py-3 px-4 border-b border-border;
+    @apply py-1.5 px-2 border-b border-border;
   }
 
   .data-table tr:hover {

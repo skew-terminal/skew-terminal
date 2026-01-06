@@ -56,29 +56,29 @@ export const SpreadScanner = () => {
   return (
     <div className="flex h-full flex-col">
       {/* Header */}
-      <div className="flex items-center justify-between border-b border-border px-4 py-3">
+      <div className="flex items-center justify-between border-b border-border/50 px-3 py-1.5">
         <div className="flex items-center gap-2">
-          <Zap className="h-4 w-4 text-primary" />
-          <span className="font-sans text-sm font-bold uppercase tracking-wider text-foreground">
+          <Zap className="h-3.5 w-3.5 text-primary" />
+          <span className="font-sans text-xs font-bold uppercase tracking-wider text-foreground">
             Live Opportunities
           </span>
-          <span className="font-mono text-xs text-muted-foreground">
+          <span className="font-mono text-[10px] text-muted-foreground">
             // CROSS-CHAIN
           </span>
         </div>
-        <Badge variant="outline" className="border-accent/50 bg-accent/10 text-accent font-mono text-[10px]">
+        <Badge variant="outline" className="border-accent/50 bg-accent/10 text-accent font-mono text-[9px] px-1.5 py-0">
           {opportunities.length} ACTIVE
         </Badge>
       </div>
 
       {/* Table Header */}
-      <div className="grid grid-cols-[2fr_1fr_1fr_1fr_1fr_1fr] gap-2 border-b border-border bg-secondary/30 px-4 py-2">
-        <span className="font-sans text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Market</span>
-        <span className="font-sans text-[10px] font-bold uppercase tracking-wider text-muted-foreground text-center">Poly</span>
-        <span className="font-sans text-[10px] font-bold uppercase tracking-wider text-muted-foreground text-center">Kalshi</span>
-        <span className="font-sans text-[10px] font-bold uppercase tracking-wider text-muted-foreground text-center">Skew %</span>
-        <span className="font-sans text-[10px] font-bold uppercase tracking-wider text-muted-foreground text-center">24H Vol</span>
-        <span className="font-sans text-[10px] font-bold uppercase tracking-wider text-muted-foreground text-center">Status</span>
+      <div className="grid grid-cols-[2fr_1fr_1fr_1fr_1fr_1fr] gap-1 border-b border-border/50 bg-secondary/30 px-3 py-1">
+        <span className="font-sans text-[9px] font-bold uppercase tracking-wider text-muted-foreground">Market</span>
+        <span className="font-sans text-[9px] font-bold uppercase tracking-wider text-muted-foreground text-center">Poly</span>
+        <span className="font-sans text-[9px] font-bold uppercase tracking-wider text-muted-foreground text-center">Kalshi</span>
+        <span className="font-sans text-[9px] font-bold uppercase tracking-wider text-muted-foreground text-center">Skew %</span>
+        <span className="font-sans text-[9px] font-bold uppercase tracking-wider text-muted-foreground text-center">24H Vol</span>
+        <span className="font-sans text-[9px] font-bold uppercase tracking-wider text-muted-foreground text-center">Status</span>
       </div>
 
       {/* Table Body */}
@@ -91,28 +91,28 @@ export const SpreadScanner = () => {
             <div
               key={opp.id}
               onClick={() => handleRowClick(opp.id)}
-              className="grid grid-cols-[2fr_1fr_1fr_1fr_1fr_1fr] gap-2 border-b border-border px-4 py-3 cursor-pointer transition-all hover:bg-secondary/50 hover:border-l-2 hover:border-l-primary"
+              className="grid grid-cols-[2fr_1fr_1fr_1fr_1fr_1fr] gap-1 border-b border-border/30 px-3 py-1.5 cursor-pointer transition-all hover:bg-secondary/60 hover:border-l-2 hover:border-l-primary"
             >
               {/* Market */}
-              <div className="flex items-center gap-2 min-w-0">
-                <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded bg-secondary">
-                  <Icon className="h-3.5 w-3.5 text-muted-foreground" />
+              <div className="flex items-center gap-1.5 min-w-0">
+                <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded-sm bg-secondary">
+                  <Icon className="h-3 w-3 text-muted-foreground" />
                 </div>
-                <span className="font-mono text-xs text-foreground truncate">
+                <span className="font-mono text-[11px] text-foreground truncate">
                   {opp.market}
                 </span>
               </div>
 
               {/* Poly Price */}
               <div className="flex items-center justify-center">
-                <span className="font-mono text-xs text-foreground">
+                <span className="font-mono text-[11px] text-foreground">
                   {formatPrice(opp.polyPrice)}
                 </span>
               </div>
 
               {/* Kalshi Price */}
               <div className="flex items-center justify-center">
-                <span className="font-mono text-xs text-foreground">
+                <span className="font-mono text-[11px] text-foreground">
                   {formatPrice(opp.kalshiPrice)}
                 </span>
               </div>
@@ -120,7 +120,7 @@ export const SpreadScanner = () => {
               {/* Skew */}
               <div className="flex items-center justify-center">
                 <span
-                  className={`font-mono text-xs font-bold px-2 py-0.5 rounded ${
+                  className={`font-mono text-[11px] font-bold px-1.5 py-0 rounded-sm ${
                     isHighSkew
                       ? "bg-accent text-accent-foreground"
                       : "text-muted-foreground"
@@ -131,13 +131,13 @@ export const SpreadScanner = () => {
               </div>
 
               {/* Volume */}
-              <div className="flex flex-col items-center justify-center gap-1">
+              <div className="flex flex-col items-center justify-center gap-0.5">
                 <span className="font-mono text-[10px] text-muted-foreground">
                   {formatVolume(opp.volume24h)}
                 </span>
-                <div className="h-1 w-full max-w-[60px] overflow-hidden rounded-full bg-secondary">
+                <div className="h-0.5 w-full max-w-[50px] overflow-hidden rounded-sm bg-secondary">
                   <div
-                    className="h-full rounded-full bg-primary/60"
+                    className="h-full rounded-sm bg-primary/60"
                     style={{ width: `${getVolumeWidth(opp.volume24h)}%` }}
                   />
                 </div>
@@ -147,7 +147,7 @@ export const SpreadScanner = () => {
               <div className="flex items-center justify-center">
                 <Badge
                   variant="outline"
-                  className={`font-mono text-[9px] ${
+                  className={`font-mono text-[8px] px-1 py-0 ${
                     opp.status === "arb_open"
                       ? "border-accent/50 text-accent"
                       : "border-yellow-500/50 text-yellow-500"

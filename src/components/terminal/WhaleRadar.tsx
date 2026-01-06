@@ -33,18 +33,18 @@ export const WhaleRadar = () => {
   return (
     <div className="flex h-full flex-col">
       {/* Header */}
-      <div className="flex items-center justify-between border-b border-border px-3 py-2">
-        <div className="flex items-center gap-2">
+      <div className="flex items-center justify-between border-b border-border/50 px-2 py-1">
+        <div className="flex items-center gap-1.5">
           <div className="relative">
-            <Radio className="h-4 w-4 text-primary" />
-            <div className="absolute -right-0.5 -top-0.5 h-2 w-2 animate-ping rounded-full bg-primary opacity-75" />
-            <div className="absolute -right-0.5 -top-0.5 h-2 w-2 rounded-full bg-primary" />
+            <Radio className="h-3.5 w-3.5 text-primary" />
+            <div className="absolute -right-0.5 -top-0.5 h-1.5 w-1.5 animate-ping rounded-full bg-primary opacity-75" />
+            <div className="absolute -right-0.5 -top-0.5 h-1.5 w-1.5 rounded-full bg-primary" />
           </div>
-          <span className="font-sans text-xs font-bold uppercase tracking-wider text-foreground">
+          <span className="font-sans text-[10px] font-bold uppercase tracking-wider text-foreground">
             Whale Radar
           </span>
         </div>
-        <span className="font-mono text-[10px] text-muted-foreground">
+        <span className="font-mono text-[9px] text-muted-foreground">
           24H FLOWS
         </span>
       </div>
@@ -54,54 +54,54 @@ export const WhaleRadar = () => {
         {whaleMoves.map((whale, index) => (
           <div
             key={index}
-            className="border-b border-border px-3 py-2.5 transition-colors hover:bg-secondary/50"
+            className="border-b border-border/30 px-2 py-1.5 transition-colors hover:bg-secondary/50"
           >
             {/* Top Row: Address + PnL */}
             <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1.5">
                 <div
-                  className={`flex h-5 w-5 items-center justify-center rounded-full text-[8px] font-bold ${
+                  className={`flex h-4 w-4 items-center justify-center rounded-sm text-[7px] font-bold ${
                     whale.pnl >= 0 ? "bg-accent/20 text-accent" : "bg-primary/20 text-primary"
                   }`}
                 >
                   {index + 1}
                 </div>
-                <span className="font-mono text-xs text-foreground">
+                <span className="font-mono text-[11px] text-foreground">
                   {whale.address}
                 </span>
-                <Badge variant="outline" className="border-primary/30 text-primary font-mono text-[8px] px-1 py-0">
+                <Badge variant="outline" className="border-primary/30 text-primary font-mono text-[7px] px-1 py-0">
                   WHALE
                 </Badge>
               </div>
-              <div className="flex items-center gap-1.5">
+              <div className="flex items-center gap-1">
                 <span
-                  className={`font-mono text-xs font-bold ${
+                  className={`font-mono text-[11px] font-bold ${
                     whale.pnl >= 0 ? "text-accent" : "text-primary"
                   }`}
                 >
                   {formatPnl(whale.pnl)}
                 </span>
                 {whale.pnl >= 0 ? (
-                  <TrendingUp className="h-3 w-3 text-accent" />
+                  <TrendingUp className="h-2.5 w-2.5 text-accent" />
                 ) : (
-                  <TrendingDown className="h-3 w-3 text-primary" />
+                  <TrendingDown className="h-2.5 w-2.5 text-primary" />
                 )}
               </div>
             </div>
 
             {/* Bottom Row: Recent Action */}
-            <div className="mt-1.5 flex items-center gap-1 pl-7">
-              <span className="font-mono text-[10px] text-muted-foreground">
+            <div className="mt-1 flex items-center gap-1 pl-5">
+              <span className="font-mono text-[9px] text-muted-foreground">
                 Just {whale.actionSide === "buy" ? "bought" : "sold"}:
               </span>
               <span
-                className={`font-mono text-[10px] font-medium ${
+                className={`font-mono text-[9px] font-medium ${
                   whale.actionSide === "buy" ? "text-accent" : "text-primary"
                 }`}
               >
                 {whale.recentAction}
               </span>
-              <span className="font-mono text-[10px] text-muted-foreground">
+              <span className="font-mono text-[9px] text-muted-foreground">
                 ({formatSize(whale.actionSize)})
               </span>
             </div>
@@ -110,10 +110,10 @@ export const WhaleRadar = () => {
       </div>
 
       {/* Footer */}
-      <div className="border-t border-border px-3 py-2">
-        <button className="w-full font-mono text-[10px] text-primary hover:text-primary/80 transition-colors">
+      <div className="border-t border-border/50 px-2 py-1">
+        <a href="/app/whales" className="block w-full font-mono text-[9px] text-primary hover:text-primary/80 transition-colors text-center">
           VIEW ALL WHALE ACTIVITY →
-        </button>
+        </a>
       </div>
     </div>
   );
