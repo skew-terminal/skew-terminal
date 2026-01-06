@@ -1,96 +1,59 @@
-import { TerminalSidebar } from "@/components/TerminalSidebar";
-import { TerminalHeader } from "@/components/TerminalHeader";
-import { ArbitrageTable } from "@/components/ArbitrageTable";
-import { TrendingUp, Activity, AlertCircle } from "lucide-react";
+import { TopNavBar } from "@/components/terminal/TopNavBar";
+import { IconSidebar } from "@/components/terminal/IconSidebar";
+import { MainChart } from "@/components/terminal/MainChart";
+import { SmartMoneyIndicator } from "@/components/terminal/SmartMoneyIndicator";
+import { LiveTape } from "@/components/terminal/LiveTape";
+import { ArbMatrix } from "@/components/terminal/ArbMatrix";
+import { WhaleTracker } from "@/components/terminal/WhaleTracker";
+import { EventCalendar } from "@/components/terminal/EventCalendar";
 
 const TerminalApp = () => {
   return (
-    <div className="flex min-h-screen w-full bg-background">
-      {/* Sidebar */}
-      <TerminalSidebar />
+    <div className="flex h-screen w-full flex-col overflow-hidden bg-background">
+      {/* Top Navigation */}
+      <TopNavBar />
 
-      {/* Main content */}
-      <div className="flex flex-1 flex-col">
-        {/* Header */}
-        <TerminalHeader />
+      {/* Main Container */}
+      <div className="flex flex-1 overflow-hidden">
+        {/* Left Icon Sidebar */}
+        <IconSidebar />
 
-        {/* Content area */}
-        <main className="flex-1 overflow-auto p-4 lg:p-6">
-          {/* Stats row */}
-          <div className="mb-6 grid gap-4 md:grid-cols-3">
-            <StatCard
-              icon={TrendingUp}
-              label="Active Spreads"
-              value="10"
-              accent="orange"
-            />
-            <StatCard
-              icon={Activity}
-              label="Avg. Spread"
-              value="+11.4%"
-              accent="green"
-            />
-            <StatCard
-              icon={AlertCircle}
-              label="High Value Opps"
-              value="4"
-              accent="orange"
-            />
-          </div>
-
-          {/* Main table */}
-          <ArbitrageTable />
-
-          {/* Bottom info */}
-          <div className="mt-6 flex items-center justify-between border-t border-border pt-4">
-            <div className="flex items-center gap-2">
-              <div className="h-2 w-2 rounded-full bg-accent animate-pulse" />
-              <span className="font-mono text-xs text-muted-foreground">
-                Live data feed active
-              </span>
+        {/* Main Content Grid */}
+        <div className="flex flex-1 overflow-hidden">
+          {/* Column 1: Chart Engine (60%) */}
+          <div className="flex w-[60%] min-w-0 flex-col border-r border-border">
+            {/* Main Chart (70% of column height) */}
+            <div className="h-[65%] min-h-0">
+              <MainChart />
             </div>
-            <div className="font-mono text-xs text-muted-foreground">
-              Last updated: {new Date().toLocaleTimeString()}
+            {/* Smart Money Indicator (30% of column height) */}
+            <div className="h-[35%] min-h-0">
+              <SmartMoneyIndicator />
             </div>
           </div>
-        </main>
-      </div>
-    </div>
-  );
-};
 
-interface StatCardProps {
-  icon: React.ElementType;
-  label: string;
-  value: string;
-  accent: "orange" | "green";
-}
-
-const StatCard = ({ icon: Icon, label, value, accent }: StatCardProps) => {
-  return (
-    <div className="border border-border bg-card p-4 transition-all duration-200 hover:border-primary/30">
-      <div className="flex items-center gap-3">
-        <div 
-          className={`flex h-10 w-10 items-center justify-center ${
-            accent === "orange" ? "bg-primary/20" : "bg-accent/20"
-          }`}
-        >
-          <Icon 
-            className={`h-5 w-5 ${
-              accent === "orange" ? "text-primary" : "text-accent"
-            }`} 
-          />
-        </div>
-        <div>
-          <div className="font-mono text-xs uppercase tracking-wider text-muted-foreground">
-            {label}
+          {/* Column 2: Data Feed (20%) */}
+          <div className="flex w-[20%] min-w-0 flex-col border-r border-border">
+            {/* Live Tape (60% of column height) */}
+            <div className="h-[55%] min-h-0 border-b border-border">
+              <LiveTape />
+            </div>
+            {/* Arb Matrix (40% of column height) */}
+            <div className="h-[45%] min-h-0">
+              <ArbMatrix />
+            </div>
           </div>
-          <div 
-            className={`font-mono text-2xl font-bold ${
-              accent === "orange" ? "text-primary" : "text-accent"
-            }`}
-          >
-            {value}
+
+          {/* Column 3: Context & Tools (20%) */}
+          <div className="flex w-[20%] min-w-0 flex-col">
+            {/* Whale Tracker (50% of column height) */}
+            <div className="h-[50%] min-h-0 border-b border-border">
+              <WhaleTracker />
+            </div>
+            {/* Event Calendar (50% of column height) */}
+            <div className="h-[50%] min-h-0">
+              <EventCalendar />
+            </div>
           </div>
         </div>
       </div>

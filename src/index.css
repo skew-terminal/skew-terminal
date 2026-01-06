@@ -6,26 +6,26 @@
 
 @layer base {
   :root {
-    /* SKEW Cyber-Finance Design System */
+    /* SKEW Cyber-Finance Design System - Axiom-inspired */
     --background: 0 0% 2%;
-    --foreground: 0 0% 95%;
+    --foreground: 0 0% 92%;
 
-    --card: 0 0% 4%;
-    --card-foreground: 0 0% 95%;
+    --card: 0 0% 3%;
+    --card-foreground: 0 0% 92%;
 
     --popover: 0 0% 4%;
-    --popover-foreground: 0 0% 95%;
+    --popover-foreground: 0 0% 92%;
 
     /* Safety Orange - Primary Action */
     --primary: 16 100% 50%;
     --primary-foreground: 0 0% 0%;
 
     /* Muted backgrounds */
-    --secondary: 0 0% 8%;
-    --secondary-foreground: 0 0% 85%;
+    --secondary: 0 0% 6%;
+    --secondary-foreground: 0 0% 80%;
 
-    --muted: 0 0% 12%;
-    --muted-foreground: 0 0% 60%;
+    --muted: 0 0% 10%;
+    --muted-foreground: 0 0% 55%;
 
     /* Neon Green - Success/Profit */
     --accent: 110 100% 55%;
@@ -34,29 +34,29 @@
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 98%;
 
-    /* Subtle borders */
-    --border: 0 0% 100% / 0.1;
-    --input: 0 0% 100% / 0.1;
+    /* Ultra-thin subtle borders - key to Axiom aesthetic */
+    --border: 0 0% 100% / 0.08;
+    --input: 0 0% 100% / 0.08;
     --ring: 16 100% 50%;
 
-    --radius: 0.25rem;
+    --radius: 0rem;
 
     /* Custom SKEW tokens */
     --skew-angle: -5deg;
     --skew-orange: 16 100% 50%;
     --skew-green: 110 100% 55%;
     --skew-dark: 0 0% 2%;
-    --skew-card: 0 0% 4%;
-    --skew-border: 0 0% 100% / 0.1;
-    --skew-text-dim: 0 0% 60%;
+    --skew-card: 0 0% 3%;
+    --skew-border: 0 0% 100% / 0.08;
+    --skew-text-dim: 0 0% 55%;
 
-    --sidebar-background: 0 0% 3%;
-    --sidebar-foreground: 0 0% 85%;
+    --sidebar-background: 0 0% 2.5%;
+    --sidebar-foreground: 0 0% 80%;
     --sidebar-primary: 16 100% 50%;
     --sidebar-primary-foreground: 0 0% 0%;
-    --sidebar-accent: 0 0% 8%;
-    --sidebar-accent-foreground: 0 0% 95%;
-    --sidebar-border: 0 0% 100% / 0.1;
+    --sidebar-accent: 0 0% 6%;
+    --sidebar-accent-foreground: 0 0% 92%;
+    --sidebar-border: 0 0% 100% / 0.08;
     --sidebar-ring: 16 100% 50%;
   }
 }
