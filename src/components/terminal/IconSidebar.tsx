@@ -26,9 +26,9 @@ export const IconSidebar = () => {
   const location = useLocation();
 
   return (
-    <aside className="flex h-full w-12 flex-col border-r border-border bg-card">
+    <aside className="flex h-full w-10 flex-col border-r border-border/50 bg-card">
       {/* Navigation */}
-      <nav className="flex flex-1 flex-col items-center gap-1 py-2">
+      <nav className="flex flex-1 flex-col items-center gap-0.5 py-1">
         {navItems.map((item) => {
           const isActive = location.pathname === item.path || 
             (item.path === "/app" && location.pathname === "/app");
@@ -38,16 +38,16 @@ export const IconSidebar = () => {
                 <Link
                   to={item.path}
                   className={cn(
-                    "flex h-10 w-10 items-center justify-center rounded transition-all duration-150",
+                    "flex h-8 w-8 items-center justify-center rounded-sm transition-all duration-150",
                     isActive
                       ? "bg-primary/20 text-primary"
                       : "text-muted-foreground hover:bg-secondary hover:text-foreground"
                   )}
                 >
-                  <item.icon className="h-4.5 w-4.5" />
+                  <item.icon className="h-4 w-4" />
                 </Link>
               </TooltipTrigger>
-              <TooltipContent side="right" className="font-mono text-xs">
+              <TooltipContent side="right" className="font-mono text-[10px]">
                 {item.label}
               </TooltipContent>
             </Tooltip>
@@ -56,17 +56,17 @@ export const IconSidebar = () => {
       </nav>
 
       {/* Settings at bottom */}
-      <div className="border-t border-border py-2">
+      <div className="border-t border-border/50 py-1">
         <Tooltip delayDuration={0}>
           <TooltipTrigger asChild>
             <Link
               to="/app/settings"
-              className="mx-auto flex h-10 w-10 items-center justify-center rounded text-muted-foreground transition-all duration-150 hover:bg-secondary hover:text-foreground"
+              className="mx-auto flex h-8 w-8 items-center justify-center rounded-sm text-muted-foreground transition-all duration-150 hover:bg-secondary hover:text-foreground"
             >
-              <Settings className="h-4.5 w-4.5" />
+              <Settings className="h-4 w-4" />
             </Link>
           </TooltipTrigger>
-          <TooltipContent side="right" className="font-mono text-xs">
+          <TooltipContent side="right" className="font-mono text-[10px]">
             Settings
           </TooltipContent>
         </Tooltip>

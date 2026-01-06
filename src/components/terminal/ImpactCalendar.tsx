@@ -65,14 +65,14 @@ export const ImpactCalendar = () => {
   return (
     <div className="flex h-full flex-col">
       {/* Header */}
-      <div className="flex items-center justify-between border-b border-border px-3 py-2">
-        <div className="flex items-center gap-2">
-          <Timer className="h-4 w-4 text-primary" />
-          <span className="font-sans text-xs font-bold uppercase tracking-wider text-foreground">
+      <div className="flex items-center justify-between border-b border-border/50 px-2 py-1">
+        <div className="flex items-center gap-1.5">
+          <Timer className="h-3.5 w-3.5 text-primary" />
+          <span className="font-sans text-[10px] font-bold uppercase tracking-wider text-foreground">
             Impact Calendar
           </span>
         </div>
-        <span className="font-mono text-[10px] text-muted-foreground">
+        <span className="font-mono text-[9px] text-muted-foreground">
           CATALYSTS
         </span>
       </div>
@@ -87,21 +87,21 @@ export const ImpactCalendar = () => {
           return (
             <div
               key={event.id}
-              className="border-b border-border px-3 py-2.5 transition-colors hover:bg-secondary/50"
+              className="border-b border-border/30 px-2 py-1.5 transition-colors hover:bg-secondary/50"
             >
               {/* Top Row */}
-              <div className="flex items-start justify-between gap-2">
-                <div className="flex items-start gap-2 min-w-0">
-                  <div className={`mt-0.5 shrink-0 rounded p-1 ${config.bg}`}>
-                    <Icon className={`h-3 w-3 ${config.color}`} />
+              <div className="flex items-start justify-between gap-1.5">
+                <div className="flex items-start gap-1.5 min-w-0">
+                  <div className={`mt-0.5 shrink-0 rounded-sm p-0.5 ${config.bg}`}>
+                    <Icon className={`h-2.5 w-2.5 ${config.color}`} />
                   </div>
                   <div className="min-w-0">
-                    <div className="font-mono text-xs text-foreground truncate">
+                    <div className="font-mono text-[11px] text-foreground truncate">
                       {event.event}
                     </div>
-                    <div className="mt-0.5 flex items-center gap-2">
-                      <Clock className="h-2.5 w-2.5 text-muted-foreground" />
-                      <span className="font-mono text-[10px] text-muted-foreground">
+                    <div className="mt-0.5 flex items-center gap-1">
+                      <Clock className="h-2 w-2 text-muted-foreground" />
+                      <span className="font-mono text-[9px] text-muted-foreground">
                         {event.time}
                       </span>
                     </div>
@@ -109,16 +109,16 @@ export const ImpactCalendar = () => {
                 </div>
                 <Badge
                   variant="outline"
-                  className={`shrink-0 font-mono text-[8px] ${config.border} ${config.color}`}
+                  className={`shrink-0 font-mono text-[7px] px-1 py-0 ${config.border} ${config.color}`}
                 >
                   {config.label}
                 </Badge>
               </div>
 
               {/* Countdown */}
-              <div className="mt-2 flex items-center justify-end">
+              <div className="mt-1 flex items-center justify-end">
                 <span
-                  className={`font-mono text-[10px] font-bold ${
+                  className={`font-mono text-[9px] font-bold ${
                     countdown < 3600 ? "text-primary animate-pulse" : "text-accent"
                   }`}
                 >
@@ -131,10 +131,10 @@ export const ImpactCalendar = () => {
       </div>
 
       {/* Footer */}
-      <div className="border-t border-border px-3 py-2">
-        <button className="w-full font-mono text-[10px] text-primary hover:text-primary/80 transition-colors">
+      <div className="border-t border-border/50 px-2 py-1">
+        <a href="/app/calendar" className="block w-full font-mono text-[9px] text-primary hover:text-primary/80 transition-colors text-center">
           VIEW FULL CALENDAR →
-        </button>
+        </a>
       </div>
     </div>
   );
