@@ -56,7 +56,7 @@ export const SpreadScanner = () => {
   return (
     <div className="flex h-full flex-col">
       {/* Header */}
-      <div className="flex items-center justify-between border-b border-border/50 px-3 py-1.5">
+      <div className="flex items-center justify-between border-b border-border px-3 py-1.5">
         <div className="flex items-center gap-2">
           <Zap className="h-3.5 w-3.5 text-primary" />
           <span className="font-sans text-xs font-bold uppercase tracking-wider text-foreground">
@@ -72,7 +72,7 @@ export const SpreadScanner = () => {
       </div>
 
       {/* Table Header */}
-      <div className="grid grid-cols-[2fr_1fr_1fr_1fr_1fr_1fr] gap-1 border-b border-border/50 bg-secondary/30 px-3 py-1">
+      <div className="grid grid-cols-[2fr_1fr_1fr_1fr_1fr_1fr] gap-1 border-b border-border bg-secondary/30 px-3 py-1">
         <span className="font-sans text-[9px] font-bold uppercase tracking-wider text-muted-foreground">Market</span>
         <span className="font-sans text-[9px] font-bold uppercase tracking-wider text-muted-foreground text-center">Poly</span>
         <span className="font-sans text-[9px] font-bold uppercase tracking-wider text-muted-foreground text-center">Kalshi</span>
@@ -83,7 +83,7 @@ export const SpreadScanner = () => {
 
       {/* Table Body */}
       <div className="flex-1 overflow-auto">
-        {opportunities.map((opp) => {
+        {opportunities.map((opp, index) => {
           const Icon = categoryIcons[opp.category];
           const isHighSkew = opp.skew > 5;
 
@@ -91,7 +91,9 @@ export const SpreadScanner = () => {
             <div
               key={opp.id}
               onClick={() => handleRowClick(opp.id)}
-              className="grid grid-cols-[2fr_1fr_1fr_1fr_1fr_1fr] gap-1 border-b border-border/30 px-3 py-1.5 cursor-pointer transition-all hover:bg-secondary/60 hover:border-l-2 hover:border-l-primary"
+              className={`grid grid-cols-[2fr_1fr_1fr_1fr_1fr_1fr] gap-1 px-3 py-1.5 cursor-pointer transition-all hover:bg-secondary/60 hover:border-l-2 hover:border-l-primary ${
+                index % 2 === 1 ? "bg-white/[0.02]" : ""
+              }`}
             >
               {/* Market */}
               <div className="flex items-center gap-1.5 min-w-0">

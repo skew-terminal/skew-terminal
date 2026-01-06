@@ -8,7 +8,7 @@ const stats = [
 
 export const GlobalStatsBar = () => {
   return (
-    <div className="flex items-center justify-between border-b border-border/50 bg-card/50 px-3 py-1">
+    <div className="flex items-center justify-between border-b border-border bg-card/50 px-3 py-1">
       <div className="flex items-center gap-4">
         {stats.map((stat, index) => (
           <div key={index} className="flex items-center gap-1.5">

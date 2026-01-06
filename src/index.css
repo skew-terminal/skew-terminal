@@ -34,9 +34,9 @@
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 98%;
 
-    /* Ultra-thin subtle borders - key to Axiom aesthetic */
-    --border: 0 0% 100% / 0.08;
-    --input: 0 0% 100% / 0.08;
+    /* Ultra-subtle dark borders - stealthy Axiom aesthetic */
+    --border: 0 0% 15%;
+    --input: 0 0% 15%;
     --ring: 16 100% 50%;
 
     --radius: 0.125rem;
@@ -47,7 +47,7 @@
     --skew-green: 110 100% 55%;
     --skew-dark: 0 0% 2%;
     --skew-card: 0 0% 3%;
-    --skew-border: 0 0% 100% / 0.08;
+    --skew-border: 0 0% 15%;
     --skew-text-dim: 0 0% 55%;
 
     --sidebar-background: 0 0% 2.5%;
@@ -56,7 +56,7 @@
     --sidebar-primary-foreground: 0 0% 0%;
     --sidebar-accent: 0 0% 6%;
     --sidebar-accent-foreground: 0 0% 92%;
-    --sidebar-border: 0 0% 100% / 0.08;
+    --sidebar-border: 0 0% 15%;
     --sidebar-ring: 16 100% 50%;
   }
 }
@@ -164,7 +164,7 @@
     @apply border-b border-border bg-card/80 backdrop-blur-sm;
   }
 
-  /* Data table styles */
+  /* Data table styles with zebra striping */
   .data-table {
     @apply w-full font-mono text-sm;
   }
@@ -174,11 +174,20 @@
   }
 
   .data-table td {
-    @apply py-1.5 px-2 border-b border-border;
+    @apply py-1.5 px-2;
+  }
+
+  .data-table tr:nth-child(even) {
+    @apply bg-white/[0.02];
   }
 
   .data-table tr:hover {
     @apply bg-secondary/50;
+  }
+
+  /* Zebra striping utility */
+  .zebra-row-even {
+    @apply bg-white/[0.02];
   }
 }
 

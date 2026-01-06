@@ -11,7 +11,7 @@ const priceData = [
 
 export const TopNavBar = () => {
   return (
-    <header className="flex h-10 items-center justify-between border-b border-border/50 bg-card px-3">
+    <header className="flex h-10 items-center justify-between border-b border-border bg-card px-3">
       {/* Logo */}
       <Link to="/" className="flex items-center gap-2">
         <div className="flex h-7 w-7 items-center justify-center bg-primary [-webkit-transform:skewX(-10deg)] [transform:skewX(-10deg)]">
