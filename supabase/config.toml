@@ -5,3 +5,12 @@ verify_jwt = false
 
 [functions.fetch-kalshi]
 verify_jwt = false
+
+[functions.fetch-divvy]
+verify_jwt = false
+
+[functions.fetch-pancakeswap]
+verify_jwt = false
+
+[functions.fetch-azuro]
+verify_jwt = false
