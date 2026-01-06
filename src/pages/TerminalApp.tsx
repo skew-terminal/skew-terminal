@@ -1,15 +1,20 @@
-import { TopNavBar } from "@/components/terminal/TopNavBar";
+import { CommandBar } from "@/components/terminal/CommandBar";
+import { HotTicker } from "@/components/terminal/HotTicker";
 import { IconSidebar } from "@/components/terminal/IconSidebar";
 import { GlobalStatsBar } from "@/components/terminal/GlobalStatsBar";
 import { SpreadScanner } from "@/components/terminal/SpreadScanner";
 import { WhaleRadar } from "@/components/terminal/WhaleRadar";
 import { ImpactCalendar } from "@/components/terminal/ImpactCalendar";
+import { FooterBar } from "@/components/terminal/FooterBar";
 
 const TerminalApp = () => {
   return (
     <div className="flex h-screen w-full flex-col overflow-hidden bg-background">
-      {/* Top Navigation */}
-      <TopNavBar />
+      {/* Command Bar (New TopNav) */}
+      <CommandBar />
+
+      {/* Hot Events Ticker */}
+      <HotTicker />
 
       {/* Global Stats Bar */}
       <GlobalStatsBar />
@@ -22,14 +27,14 @@ const TerminalApp = () => {
         {/* Main Content Grid */}
         <div className="flex flex-1 overflow-hidden">
           {/* Column 1: Spread Scanner (65%) */}
-          <div className="flex w-[65%] min-w-0 flex-col border-r border-border/50">
+          <div className="flex w-[65%] min-w-0 flex-col border-r border-border">
             <SpreadScanner />
           </div>
 
           {/* Column 2: Market Intel (35%) */}
           <div className="flex w-[35%] min-w-0 flex-col">
             {/* Whale Radar (50% of column height) */}
-            <div className="h-[50%] min-h-0 border-b border-border/50">
+            <div className="h-[50%] min-h-0 border-b border-border">
               <WhaleRadar />
             </div>
             {/* Impact Calendar (50% of column height) */}
@@ -39,6 +44,9 @@ const TerminalApp = () => {
           </div>
         </div>
       </div>
+
+      {/* Footer Bar */}
+      <FooterBar />
     </div>
   );
 };
