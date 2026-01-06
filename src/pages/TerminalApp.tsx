@@ -1,4 +1,5 @@
-import { CommandBar } from "@/components/terminal/CommandBar";
+import { useRef } from "react";
+import { CommandBar, CommandBarRef } from "@/components/terminal/CommandBar";
 import { HotTicker } from "@/components/terminal/HotTicker";
 import { IconSidebar } from "@/components/terminal/IconSidebar";
 import { GlobalStatsBar } from "@/components/terminal/GlobalStatsBar";
@@ -6,12 +7,19 @@ import { SpreadScanner } from "@/components/terminal/SpreadScanner";
 import { WhaleRadar } from "@/components/terminal/WhaleRadar";
 import { ImpactCalendar } from "@/components/terminal/ImpactCalendar";
 import { FooterBar } from "@/components/terminal/FooterBar";
+import { useKeyboardShortcuts } from "@/hooks/use-keyboard-shortcuts";
 
 const TerminalApp = () => {
+  const commandBarRef = useRef<CommandBarRef>(null);
+
+  useKeyboardShortcuts({
+    onSearchOpen: () => commandBarRef.current?.focusSearch(),
+  });
+
   return (
     <div className="flex h-screen w-full flex-col overflow-hidden bg-background">
       {/* Command Bar (New TopNav) */}
-      <CommandBar />
+      <CommandBar ref={commandBarRef} />
 
       {/* Hot Events Ticker */}
       <HotTicker />

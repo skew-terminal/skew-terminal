@@ -4,6 +4,7 @@ import { IconSidebar } from "@/components/terminal/IconSidebar";
 import { Clock, AlertTriangle, AlertCircle, Info, Filter } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { useKeyboardShortcuts } from "@/hooks/use-keyboard-shortcuts";
 
 interface CalendarEvent {
   id: string;
@@ -56,6 +57,8 @@ const formatCountdown = (seconds: number) => {
 const CalendarPage = () => {
   const [countdowns, setCountdowns] = useState<Record<string, number>>({});
   const [filter, setFilter] = useState<"all" | "high">("all");
+  
+  useKeyboardShortcuts();
 
   useEffect(() => {
     const initial: Record<string, number> = {};

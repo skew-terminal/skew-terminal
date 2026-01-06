@@ -7,6 +7,7 @@ import { FooterBar } from "@/components/terminal/FooterBar";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { useKeyboardShortcuts } from "@/hooks/use-keyboard-shortcuts";
 
 interface HotOpportunity {
   id: string;
@@ -112,6 +113,8 @@ const categoryColors: Record<string, string> = {
 
 const HotDashboard = () => {
   const navigate = useNavigate();
+  
+  useKeyboardShortcuts();
 
   return (
     <div className="flex h-screen flex-col bg-background text-foreground">

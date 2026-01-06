@@ -3,6 +3,7 @@ import { IconSidebar } from "@/components/terminal/IconSidebar";
 import { TrendingUp, TrendingDown, ExternalLink, Search } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import { useKeyboardShortcuts } from "@/hooks/use-keyboard-shortcuts";
 
 interface Whale {
   address: string;
@@ -34,6 +35,8 @@ const formatPnl = (pnl: number) => {
 };
 
 const WhalesPage = () => {
+  useKeyboardShortcuts();
+
   return (
     <div className="flex h-screen w-full flex-col overflow-hidden bg-background">
       <TopNavBar />

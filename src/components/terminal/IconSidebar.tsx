@@ -1,10 +1,9 @@
 import { Link, useLocation } from "react-router-dom";
 import { 
   LayoutDashboard, 
-  Scan, 
+  Flame, 
   Users, 
   Calendar, 
-  FileText,
   Settings
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -15,11 +14,10 @@ import {
 } from "@/components/ui/tooltip";
 
 const navItems = [
-  { icon: LayoutDashboard, label: "Terminal", path: "/app" },
-  { icon: Scan, label: "Scanner", path: "/app/scanner" },
-  { icon: Users, label: "Whales", path: "/app/whales" },
-  { icon: Calendar, label: "Calendar", path: "/app/calendar" },
-  { icon: FileText, label: "Docs", path: "/app/docs" },
+  { icon: LayoutDashboard, label: "Terminal", path: "/app", shortcut: "1" },
+  { icon: Flame, label: "Hot", path: "/app/hot", shortcut: "2" },
+  { icon: Users, label: "Whales", path: "/app/whales", shortcut: "3" },
+  { icon: Calendar, label: "Calendar", path: "/app/calendar", shortcut: "4" },
 ];
 
 export const IconSidebar = () => {
@@ -48,7 +46,10 @@ export const IconSidebar = () => {
                 </Link>
               </TooltipTrigger>
               <TooltipContent side="right" className="font-mono text-[10px]">
-                {item.label}
+                <span>{item.label}</span>
+                <kbd className="ml-2 rounded bg-secondary px-1 py-0.5 text-[9px] text-muted-foreground">
+                  {item.shortcut}
+                </kbd>
               </TooltipContent>
             </Tooltip>
           );
@@ -67,7 +68,8 @@ export const IconSidebar = () => {
             </Link>
           </TooltipTrigger>
           <TooltipContent side="right" className="font-mono text-[10px]">
-            Settings
+            <span>Settings</span>
+            <kbd className="ml-2 rounded bg-secondary px-1 py-0.5 text-[9px] text-muted-foreground">5</kbd>
           </TooltipContent>
         </Tooltip>
       </div>
