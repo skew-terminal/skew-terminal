@@ -1,5 +1,7 @@
+import { useState } from "react";
 import { TopNavBar } from "@/components/terminal/TopNavBar";
 import { IconSidebar } from "@/components/terminal/IconSidebar";
+import { SearchModal } from "@/components/terminal/SearchModal";
 import { TrendingUp, TrendingDown, ExternalLink, Search } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -35,10 +37,16 @@ const formatPnl = (pnl: number) => {
 };
 
 const WhalesPage = () => {
-  useKeyboardShortcuts();
+  const [searchOpen, setSearchOpen] = useState(false);
+
+  useKeyboardShortcuts({
+    onSearchOpen: () => setSearchOpen(true),
+    onEscape: () => setSearchOpen(false),
+  });
 
   return (
     <div className="flex h-screen w-full flex-col overflow-hidden bg-background">
+      <SearchModal open={searchOpen} onOpenChange={setSearchOpen} />
       <TopNavBar />
       
       <div className="flex flex-1 overflow-hidden">
