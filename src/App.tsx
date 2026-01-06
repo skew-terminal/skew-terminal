@@ -7,6 +7,7 @@ import LandingPage from "./pages/LandingPage";
 import TerminalApp from "./pages/TerminalApp";
 import WhalesPage from "./pages/WhalesPage";
 import CalendarPage from "./pages/CalendarPage";
+import HotDashboard from "./pages/HotDashboard";
 import EventDetailPage from "./pages/EventDetailPage";
 import NotFound from "./pages/NotFound";
 
@@ -23,6 +24,7 @@ const App = () => (
           <Route path="/app" element={<TerminalApp />} />
           <Route path="/app/whales" element={<WhalesPage />} />
           <Route path="/app/calendar" element={<CalendarPage />} />
+          <Route path="/app/hot" element={<HotDashboard />} />
           <Route path="/event/:id" element={<EventDetailPage />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
