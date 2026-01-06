@@ -1,5 +1,6 @@
 import { TrendingUp, TrendingDown, Radio } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { Link } from "react-router-dom";
 
 interface WhaleMove {
   address: string;
@@ -7,14 +8,15 @@ interface WhaleMove {
   recentAction: string;
   actionSize: number;
   actionSide: "buy" | "sell";
+  avatar: string;
 }
 
 const whaleMoves: WhaleMove[] = [
-  { address: "0xAB...4f92", pnl: 42000, recentAction: "TRUMP YES", actionSize: 15000, actionSide: "buy" },
-  { address: "0x7C...e821", pnl: 38500, recentAction: "BTC 100k YES", actionSize: 25000, actionSide: "buy" },
-  { address: "0xD4...91ab", pnl: -15200, recentAction: "FED CUT NO", actionSize: 8000, actionSide: "sell" },
-  { address: "0x2F...c4d8", pnl: 28900, recentAction: "ETH 5k YES", actionSize: 12000, actionSide: "buy" },
-  { address: "0x9E...3f1c", pnl: 21400, recentAction: "SOL 200 YES", actionSize: 18000, actionSide: "buy" },
+  { address: "0xAB...4f92", pnl: 42000, recentAction: "TRUMP YES", actionSize: 15000, actionSide: "buy", avatar: "🐋" },
+  { address: "0x7C...e821", pnl: 38500, recentAction: "BTC 100k YES", actionSize: 25000, actionSide: "buy", avatar: "🦈" },
+  { address: "0xD4...91ab", pnl: -15200, recentAction: "FED CUT NO", actionSize: 8000, actionSide: "sell", avatar: "🐙" },
+  { address: "0x2F...c4d8", pnl: 28900, recentAction: "ETH 5k YES", actionSize: 12000, actionSide: "buy", avatar: "🦑" },
+  { address: "0x9E...3f1c", pnl: 21400, recentAction: "SOL 200 YES", actionSize: 18000, actionSide: "buy", avatar: "🐳" },
 ];
 
 export const WhaleRadar = () => {
@@ -61,12 +63,21 @@ export const WhaleRadar = () => {
             {/* Top Row: Address + PnL */}
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-1.5">
-                <div
-                  className={`flex h-4 w-4 items-center justify-center rounded-sm text-[7px] font-bold ${
-                    whale.pnl >= 0 ? "bg-accent/20 text-accent" : "bg-primary/20 text-primary"
-                  }`}
-                >
-                  {index + 1}
+                {/* Pulsing Avatar */}
+                <div className="relative">
+                  <div
+                    className={`flex h-5 w-5 items-center justify-center rounded-sm text-[10px] ${
+                      whale.pnl >= 0 ? "bg-accent/20" : "bg-primary/20"
+                    }`}
+                  >
+                    {whale.avatar}
+                  </div>
+                  <div
+                    className={`absolute inset-0 rounded-sm animate-ping opacity-30 ${
+                      whale.pnl >= 0 ? "bg-accent/30" : "bg-primary/30"
+                    }`}
+                    style={{ animationDuration: "2s" }}
+                  />
                 </div>
                 <span className="font-mono text-[11px] text-foreground">
                   {whale.address}
@@ -92,7 +103,7 @@ export const WhaleRadar = () => {
             </div>
 
             {/* Bottom Row: Recent Action */}
-            <div className="mt-1 flex items-center gap-1 pl-5">
+            <div className="mt-1 flex items-center gap-1 pl-6">
               <span className="font-mono text-[9px] text-muted-foreground">
                 Just {whale.actionSide === "buy" ? "bought" : "sold"}:
               </span>
@@ -113,9 +124,12 @@ export const WhaleRadar = () => {
 
       {/* Footer */}
       <div className="border-t border-border px-2 py-1">
-        <a href="/app/whales" className="block w-full font-mono text-[9px] text-primary hover:text-primary/80 transition-colors text-center">
+        <Link 
+          to="/app/whales" 
+          className="block w-full font-mono text-[9px] text-primary hover:text-primary/80 transition-colors text-center"
+        >
           VIEW ALL WHALE ACTIVITY →
-        </a>
+        </Link>
       </div>
     </div>
   );

@@ -1,27 +1,37 @@
 import { useState, useEffect } from "react";
-import { Clock, AlertTriangle, AlertCircle, Info, Timer } from "lucide-react";
+import { Clock, AlertTriangle, AlertCircle, Info, Timer, Filter } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Link } from "react-router-dom";
 
 interface CalendarEvent {
   id: string;
   time: string;
   event: string;
   impact: "high" | "medium" | "low";
-  countdown: number; // seconds from now
+  category: "economics" | "politics" | "crypto";
+  countdown: number;
 }
 
 const events: CalendarEvent[] = [
-  { id: "1", time: "14:00 UTC", event: "CPI Inflation Data Release", impact: "high", countdown: 9910 },
-  { id: "2", time: "18:30 UTC", event: "Fed Interest Rate Decision", impact: "high", countdown: 26110 },
-  { id: "3", time: "10:00 UTC", event: "NFP Employment Report", impact: "medium", countdown: 86400 },
-  { id: "4", time: "All Day", event: "Trump Rally - Iowa", impact: "medium", countdown: 172800 },
-  { id: "5", time: "09:00 UTC", event: "ECB Policy Statement", impact: "low", countdown: 259200 },
+  { id: "1", time: "14:00 UTC", event: "CPI Inflation Data Release", impact: "high", category: "economics", countdown: 9910 },
+  { id: "2", time: "18:30 UTC", event: "Fed Interest Rate Decision", impact: "high", category: "economics", countdown: 26110 },
+  { id: "3", time: "10:00 UTC", event: "NFP Employment Report", impact: "medium", category: "economics", countdown: 86400 },
+  { id: "4", time: "All Day", event: "Trump Rally - Iowa", impact: "medium", category: "politics", countdown: 172800 },
+  { id: "5", time: "09:00 UTC", event: "ECB Policy Statement", impact: "low", category: "economics", countdown: 259200 },
+  { id: "6", time: "12:00 UTC", event: "ETH ETF Approval Decision", impact: "high", category: "crypto", countdown: 345600 },
 ];
 
 const impactConfig = {
-  high: { icon: AlertTriangle, color: "text-primary", bg: "bg-primary/20", label: "HIGH VOLATILITY", border: "border-primary/50" },
-  medium: { icon: AlertCircle, color: "text-yellow-500", bg: "bg-yellow-500/20", label: "MEDIUM IMPACT", border: "border-yellow-500/50" },
-  low: { icon: Info, color: "text-muted-foreground", bg: "bg-secondary", label: "LOW IMPACT", border: "border-muted-foreground/30" },
+  high: { icon: AlertTriangle, color: "text-primary", bg: "bg-primary/20", label: "HIGH", border: "border-primary/50" },
+  medium: { icon: AlertCircle, color: "text-yellow-500", bg: "bg-yellow-500/20", label: "MED", border: "border-yellow-500/50" },
+  low: { icon: Info, color: "text-muted-foreground", bg: "bg-secondary", label: "LOW", border: "border-muted-foreground/30" },
+};
+
+const categoryColors = {
+  economics: "border-l-blue-500",
+  politics: "border-l-purple-500",
+  crypto: "border-l-accent",
 };
 
 const formatCountdown = (seconds: number) => {
@@ -31,24 +41,23 @@ const formatCountdown = (seconds: number) => {
   
   if (hours >= 24) {
     const days = Math.floor(hours / 24);
-    return `in ${days}d ${hours % 24}h`;
+    return `${days}d ${hours % 24}h`;
   }
   
-  return `in ${hours.toString().padStart(2, "0")}:${minutes.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
+  return `${hours.toString().padStart(2, "0")}:${minutes.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
 };
 
 export const ImpactCalendar = () => {
   const [countdowns, setCountdowns] = useState<Record<string, number>>({});
+  const [filterImpact, setFilterImpact] = useState<"all" | "high">("all");
 
   useEffect(() => {
-    // Initialize countdowns
     const initial: Record<string, number> = {};
     events.forEach((e) => {
       initial[e.id] = e.countdown;
     });
     setCountdowns(initial);
 
-    // Update every second
     const interval = setInterval(() => {
       setCountdowns((prev) => {
         const updated: Record<string, number> = {};
@@ -62,6 +71,10 @@ export const ImpactCalendar = () => {
     return () => clearInterval(interval);
   }, []);
 
+  const filteredEvents = events.filter(
+    (e) => filterImpact === "all" || e.impact === "high"
+  );
+
   return (
     <div className="flex h-full flex-col">
       {/* Header */}
@@ -72,14 +85,33 @@ export const ImpactCalendar = () => {
             Impact Calendar
           </span>
         </div>
-        <span className="font-mono text-[9px] text-muted-foreground">
-          CATALYSTS
-        </span>
+        <div className="flex items-center gap-1">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setFilterImpact("all")}
+            className={`h-5 px-1.5 font-mono text-[8px] ${
+              filterImpact === "all" ? "text-foreground bg-secondary" : "text-muted-foreground"
+            }`}
+          >
+            ALL
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setFilterImpact("high")}
+            className={`h-5 px-1.5 font-mono text-[8px] ${
+              filterImpact === "high" ? "text-primary bg-primary/10" : "text-muted-foreground"
+            }`}
+          >
+            HIGH
+          </Button>
+        </div>
       </div>
 
       {/* Events */}
       <div className="flex-1 overflow-auto">
-        {events.map((event, index) => {
+        {filteredEvents.map((event, index) => {
           const config = impactConfig[event.impact];
           const Icon = config.icon;
           const countdown = countdowns[event.id] ?? event.countdown;
@@ -87,7 +119,7 @@ export const ImpactCalendar = () => {
           return (
             <div
               key={event.id}
-              className={`px-2 py-1.5 transition-colors hover:bg-secondary/50 ${
+              className={`border-l-2 ${categoryColors[event.category]} px-2 py-1.5 transition-colors hover:bg-secondary/50 ${
                 index % 2 === 1 ? "bg-white/[0.02]" : ""
               }`}
             >
@@ -109,23 +141,21 @@ export const ImpactCalendar = () => {
                     </div>
                   </div>
                 </div>
-                <Badge
-                  variant="outline"
-                  className={`shrink-0 font-mono text-[7px] px-1 py-0 ${config.border} ${config.color}`}
-                >
-                  {config.label}
-                </Badge>
-              </div>
-
-              {/* Countdown */}
-              <div className="mt-1 flex items-center justify-end">
-                <span
-                  className={`font-mono text-[9px] font-bold ${
-                    countdown < 3600 ? "text-primary animate-pulse" : "text-accent"
-                  }`}
-                >
-                  {formatCountdown(countdown)}
-                </span>
+                <div className="flex flex-col items-end gap-0.5">
+                  <Badge
+                    variant="outline"
+                    className={`shrink-0 font-mono text-[7px] px-1 py-0 ${config.border} ${config.color}`}
+                  >
+                    {config.label}
+                  </Badge>
+                  <span
+                    className={`font-mono text-[9px] font-bold ${
+                      countdown < 3600 ? "text-primary animate-pulse" : "text-accent"
+                    }`}
+                  >
+                    {formatCountdown(countdown)}
+                  </span>
+                </div>
               </div>
             </div>
           );
@@ -134,9 +164,12 @@ export const ImpactCalendar = () => {
 
       {/* Footer */}
       <div className="border-t border-border px-2 py-1">
-        <a href="/app/calendar" className="block w-full font-mono text-[9px] text-primary hover:text-primary/80 transition-colors text-center">
+        <Link 
+          to="/app/calendar" 
+          className="block w-full font-mono text-[9px] text-primary hover:text-primary/80 transition-colors text-center"
+        >
           VIEW FULL CALENDAR →
-        </a>
+        </Link>
       </div>
     </div>
   );
