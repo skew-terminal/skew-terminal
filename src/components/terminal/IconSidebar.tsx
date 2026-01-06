@@ -26,7 +26,7 @@ export const IconSidebar = () => {
   const location = useLocation();
 
   return (
-    <aside className="flex h-full w-10 flex-col border-r border-border/50 bg-card">
+    <aside className="flex h-full w-10 flex-col border-r border-border bg-card">
       {/* Navigation */}
       <nav className="flex flex-1 flex-col items-center gap-0.5 py-1">
         {navItems.map((item) => {
@@ -56,7 +56,7 @@ export const IconSidebar = () => {
       </nav>
 
       {/* Settings at bottom */}
-      <div className="border-t border-border/50 py-1">
+      <div className="border-t border-border py-1">
         <Tooltip delayDuration={0}>
           <TooltipTrigger asChild>
             <Link

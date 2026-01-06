@@ -65,7 +65,7 @@ export const ImpactCalendar = () => {
   return (
     <div className="flex h-full flex-col">
       {/* Header */}
-      <div className="flex items-center justify-between border-b border-border/50 px-2 py-1">
+      <div className="flex items-center justify-between border-b border-border px-2 py-1">
         <div className="flex items-center gap-1.5">
           <Timer className="h-3.5 w-3.5 text-primary" />
           <span className="font-sans text-[10px] font-bold uppercase tracking-wider text-foreground">
@@ -79,7 +79,7 @@ export const ImpactCalendar = () => {
 
       {/* Events */}
       <div className="flex-1 overflow-auto">
-        {events.map((event) => {
+        {events.map((event, index) => {
           const config = impactConfig[event.impact];
           const Icon = config.icon;
           const countdown = countdowns[event.id] ?? event.countdown;
@@ -87,7 +87,9 @@ export const ImpactCalendar = () => {
           return (
             <div
               key={event.id}
-              className="border-b border-border/30 px-2 py-1.5 transition-colors hover:bg-secondary/50"
+              className={`px-2 py-1.5 transition-colors hover:bg-secondary/50 ${
+                index % 2 === 1 ? "bg-white/[0.02]" : ""
+              }`}
             >
               {/* Top Row */}
               <div className="flex items-start justify-between gap-1.5">
@@ -131,7 +133,7 @@ export const ImpactCalendar = () => {
       </div>
 
       {/* Footer */}
-      <div className="border-t border-border/50 px-2 py-1">
+      <div className="border-t border-border px-2 py-1">
         <a href="/app/calendar" className="block w-full font-mono text-[9px] text-primary hover:text-primary/80 transition-colors text-center">
           VIEW FULL CALENDAR →
         </a>

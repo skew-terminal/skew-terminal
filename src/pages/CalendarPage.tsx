@@ -95,7 +95,7 @@ const CalendarPage = () => {
         
         <div className="flex flex-1 flex-col overflow-hidden">
           {/* Header */}
-          <div className="flex items-center justify-between border-b border-border/50 px-3 py-1.5">
+          <div className="flex items-center justify-between border-b border-border px-3 py-1.5">
             <div className="flex items-center gap-2">
               <span className="font-sans text-xs font-bold uppercase tracking-wider text-foreground">
                 Economic Calendar
@@ -131,11 +131,11 @@ const CalendarPage = () => {
               <div key={date} className="mb-3">
                 {/* Date Header */}
                 <div className="mb-1.5 flex items-center gap-2">
-                  <div className="h-px flex-1 bg-border/50" />
+                  <div className="h-px flex-1 bg-border" />
                   <span className="font-sans text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
                     {date}
                   </span>
-                  <div className="h-px flex-1 bg-border/50" />
+                  <div className="h-px flex-1 bg-border" />
                 </div>
 
                 {/* Events */}
@@ -145,10 +145,13 @@ const CalendarPage = () => {
                     const Icon = config.icon;
                     const countdown = countdowns[event.id] ?? event.countdown;
 
-                    return (
+                    const eventIndex = dateEvents.indexOf(event);
+                      return (
                       <div
                         key={event.id}
-                        className="flex items-center gap-3 rounded-sm border border-border/30 bg-card/50 px-2 py-1.5 transition-all hover:bg-secondary/50"
+                        className={`flex items-center gap-3 rounded-sm px-2 py-1.5 transition-all hover:bg-secondary/50 ${
+                          eventIndex % 2 === 1 ? "bg-white/[0.02]" : ""
+                        }`}
                       >
                         {/* Time */}
                         <div className="flex w-16 shrink-0 items-center gap-1">

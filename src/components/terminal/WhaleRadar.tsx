@@ -33,7 +33,7 @@ export const WhaleRadar = () => {
   return (
     <div className="flex h-full flex-col">
       {/* Header */}
-      <div className="flex items-center justify-between border-b border-border/50 px-2 py-1">
+      <div className="flex items-center justify-between border-b border-border px-2 py-1">
         <div className="flex items-center gap-1.5">
           <div className="relative">
             <Radio className="h-3.5 w-3.5 text-primary" />
@@ -54,7 +54,9 @@ export const WhaleRadar = () => {
         {whaleMoves.map((whale, index) => (
           <div
             key={index}
-            className="border-b border-border/30 px-2 py-1.5 transition-colors hover:bg-secondary/50"
+            className={`px-2 py-1.5 transition-colors hover:bg-secondary/50 ${
+              index % 2 === 1 ? "bg-white/[0.02]" : ""
+            }`}
           >
             {/* Top Row: Address + PnL */}
             <div className="flex items-center justify-between">
@@ -110,7 +112,7 @@ export const WhaleRadar = () => {
       </div>
 
       {/* Footer */}
-      <div className="border-t border-border/50 px-2 py-1">
+      <div className="border-t border-border px-2 py-1">
         <a href="/app/whales" className="block w-full font-mono text-[9px] text-primary hover:text-primary/80 transition-colors text-center">
           VIEW ALL WHALE ACTIVITY →
         </a>

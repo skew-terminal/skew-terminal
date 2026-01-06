@@ -43,7 +43,7 @@ const WhalesPage = () => {
         
         <div className="flex flex-1 flex-col overflow-hidden">
           {/* Header */}
-          <div className="flex items-center justify-between border-b border-border/50 px-3 py-1.5">
+          <div className="flex items-center justify-between border-b border-border px-3 py-1.5">
             <div className="flex items-center gap-2">
               <span className="font-sans text-xs font-bold uppercase tracking-wider text-foreground">
                 Whale Tracker
@@ -62,7 +62,7 @@ const WhalesPage = () => {
           </div>
 
           {/* Table Header */}
-          <div className="grid grid-cols-[1.5fr_1fr_1fr_1fr_2fr] gap-1 border-b border-border/50 bg-secondary/30 px-3 py-1">
+          <div className="grid grid-cols-[1.5fr_1fr_1fr_1fr_2fr] gap-1 border-b border-border bg-secondary/30 px-3 py-1">
             <span className="font-sans text-[9px] font-bold uppercase tracking-wider text-muted-foreground">Wallet</span>
             <span className="font-sans text-[9px] font-bold uppercase tracking-wider text-muted-foreground text-right">PnL (All Time)</span>
             <span className="font-sans text-[9px] font-bold uppercase tracking-wider text-muted-foreground text-right">Win Rate</span>
@@ -75,7 +75,9 @@ const WhalesPage = () => {
             {whales.map((whale, index) => (
               <div
                 key={whale.address}
-                className="grid grid-cols-[1.5fr_1fr_1fr_1fr_2fr] gap-1 border-b border-border/30 px-3 py-1.5 transition-all hover:bg-secondary/50"
+                className={`grid grid-cols-[1.5fr_1fr_1fr_1fr_2fr] gap-1 px-3 py-1.5 transition-all hover:bg-secondary/50 ${
+                  index % 2 === 1 ? "bg-white/[0.02]" : ""
+                }`}
               >
                 {/* Wallet */}
                 <div className="flex items-center gap-1.5">
