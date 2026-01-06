@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { Settings, Wallet, Search, ChevronDown, Zap } from "lucide-react";
+import { useState, useRef, forwardRef, useImperativeHandle } from "react";
+import { Settings, Wallet, Search, ChevronDown } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import {
@@ -9,6 +9,9 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
+export interface CommandBarRef {
+  focusSearch: () => void;
+}
 const networks = [
   { id: "polygon", name: "Polygon", color: "bg-purple-500" },
   { id: "solana", name: "Solana", color: "bg-gradient-to-r from-purple-500 to-cyan-400" },
@@ -21,9 +24,16 @@ const priceData = [
   { symbol: "BTC", price: "97,450", change: "+0.8%" },
 ];
 
-export const CommandBar = () => {
+export const CommandBar = forwardRef<CommandBarRef>((_, ref) => {
   const [selectedNetwork, setSelectedNetwork] = useState(networks[0]);
-  const [isLive, setIsLive] = useState(true);
+  const [isLive] = useState(true);
+  const searchInputRef = useRef<HTMLInputElement>(null);
+
+  useImperativeHandle(ref, () => ({
+    focusSearch: () => {
+      searchInputRef.current?.focus();
+    },
+  }));
 
   return (
     <header className="flex h-11 items-center justify-between border-b border-border bg-card px-2">
@@ -84,6 +94,7 @@ export const CommandBar = () => {
         <div className="relative group">
           <Search className="absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground group-focus-within:text-primary transition-colors" />
           <input
+            ref={searchInputRef}
             type="text"
             placeholder="Search markets... (⌘K)"
             className="w-full h-7 rounded-sm border border-border bg-secondary/50 pl-7 pr-3 font-mono text-[11px] text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary/50 focus:bg-secondary transition-all"
@@ -127,4 +138,6 @@ export const CommandBar = () => {
       </div>
     </header>
   );
-};
+});
+
+CommandBar.displayName = "CommandBar";
