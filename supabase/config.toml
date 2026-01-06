@@ -1,1 +1,7 @@
 project_id = "fnwwiqvsefwddelakkdl"
+
+[functions.fetch-polymarket]
+verify_jwt = false
+
+[functions.fetch-kalshi]
+verify_jwt = false
