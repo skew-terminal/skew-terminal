@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { TopNavBar } from "@/components/terminal/TopNavBar";
 import { IconSidebar } from "@/components/terminal/IconSidebar";
+import { SearchModal } from "@/components/terminal/SearchModal";
 import { Clock, AlertTriangle, AlertCircle, Info, Filter } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -57,8 +58,12 @@ const formatCountdown = (seconds: number) => {
 const CalendarPage = () => {
   const [countdowns, setCountdowns] = useState<Record<string, number>>({});
   const [filter, setFilter] = useState<"all" | "high">("all");
+  const [searchOpen, setSearchOpen] = useState(false);
   
-  useKeyboardShortcuts();
+  useKeyboardShortcuts({
+    onSearchOpen: () => setSearchOpen(true),
+    onEscape: () => setSearchOpen(false),
+  });
 
   useEffect(() => {
     const initial: Record<string, number> = {};
@@ -91,6 +96,7 @@ const CalendarPage = () => {
 
   return (
     <div className="flex h-screen w-full flex-col overflow-hidden bg-background">
+      <SearchModal open={searchOpen} onOpenChange={setSearchOpen} />
       <TopNavBar />
       
       <div className="flex flex-1 overflow-hidden">

@@ -1,9 +1,11 @@
+import { useState } from "react";
 import { Flame, TrendingUp, ExternalLink, Star, Zap } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Area, AreaChart, ResponsiveContainer } from "recharts";
 import { TopNavBar } from "@/components/terminal/TopNavBar";
 import { IconSidebar } from "@/components/terminal/IconSidebar";
 import { FooterBar } from "@/components/terminal/FooterBar";
+import { SearchModal } from "@/components/terminal/SearchModal";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -113,11 +115,16 @@ const categoryColors: Record<string, string> = {
 
 const HotDashboard = () => {
   const navigate = useNavigate();
+  const [searchOpen, setSearchOpen] = useState(false);
   
-  useKeyboardShortcuts();
+  useKeyboardShortcuts({
+    onSearchOpen: () => setSearchOpen(true),
+    onEscape: () => setSearchOpen(false),
+  });
 
   return (
     <div className="flex h-screen flex-col bg-background text-foreground">
+      <SearchModal open={searchOpen} onOpenChange={setSearchOpen} />
       <TopNavBar />
 
       <div className="flex flex-1 overflow-hidden">

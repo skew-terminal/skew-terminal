@@ -1,4 +1,4 @@
-import { useRef } from "react";
+import { useRef, useState } from "react";
 import { CommandBar, CommandBarRef } from "@/components/terminal/CommandBar";
 import { HotTicker } from "@/components/terminal/HotTicker";
 import { IconSidebar } from "@/components/terminal/IconSidebar";
@@ -7,17 +7,23 @@ import { SpreadScanner } from "@/components/terminal/SpreadScanner";
 import { WhaleRadar } from "@/components/terminal/WhaleRadar";
 import { ImpactCalendar } from "@/components/terminal/ImpactCalendar";
 import { FooterBar } from "@/components/terminal/FooterBar";
+import { SearchModal } from "@/components/terminal/SearchModal";
 import { useKeyboardShortcuts } from "@/hooks/use-keyboard-shortcuts";
 
 const TerminalApp = () => {
   const commandBarRef = useRef<CommandBarRef>(null);
+  const [searchOpen, setSearchOpen] = useState(false);
 
   useKeyboardShortcuts({
-    onSearchOpen: () => commandBarRef.current?.focusSearch(),
+    onSearchOpen: () => setSearchOpen(true),
+    onEscape: () => setSearchOpen(false),
   });
 
   return (
     <div className="flex h-screen w-full flex-col overflow-hidden bg-background">
+      {/* Search Modal */}
+      <SearchModal open={searchOpen} onOpenChange={setSearchOpen} />
+
       {/* Command Bar (New TopNav) */}
       <CommandBar ref={commandBarRef} />
 
