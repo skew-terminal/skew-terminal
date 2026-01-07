@@ -262,7 +262,7 @@ export type Database = {
     Enums: {
       market_category: "crypto" | "politics" | "sports" | "economy" | "other"
       market_status: "active" | "resolved" | "suspended"
-      platform: "polymarket" | "kalshi" | "drift" | "other"
+      platform: "polymarket" | "kalshi" | "drift" | "other" | "azuro"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -392,7 +392,7 @@ export const Constants = {
     Enums: {
       market_category: ["crypto", "politics", "sports", "economy", "other"],
       market_status: ["active", "resolved", "suspended"],
-      platform: ["polymarket", "kalshi", "drift", "other"],
+      platform: ["polymarket", "kalshi", "drift", "other", "azuro"],
     },
   },
 } as const
