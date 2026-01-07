@@ -57,103 +57,76 @@ serve(async (req) => {
     console.log(`Found ${markets.length} markets from Kalshi`);
 
     // Process and store markets
-    const processedMarkets = [];
-    const processedPrices = [];
+    let marketsUpserted = 0;
+    let pricesInserted = 0;
 
     for (const market of markets) {
       // Map Kalshi category to our categories
-      const categoryMap: Record<string, string> = {
+      const categoryMap: Record<string, 'politics' | 'crypto' | 'sports' | 'economy' | 'other'> = {
         'Politics': 'politics',
-        'Economics': 'economics',
-        'Science': 'science',
+        'Economics': 'economy',
+        'Science': 'other',
         'Sports': 'sports',
-        'Entertainment': 'entertainment',
+        'Entertainment': 'other',
         'Crypto': 'crypto',
       };
 
-      const marketData = {
-        external_id: `kalshi_${market.ticker}`,
-        name: market.title,
-        description: market.subtitle || market.title,
-        platform: 'kalshi' as const,
-        chain: null, // Kalshi is centralized
-        category: (categoryMap[market.category || ''] || 'other') as 'politics' | 'crypto' | 'sports' | 'entertainment' | 'science' | 'economics' | 'other',
-        status: market.status === 'open' ? 'active' as const : 'resolved' as const,
-        resolution_date: market.close_time ? new Date(market.close_time).toISOString() : null,
-        total_volume: market.volume || 0,
-        url: `https://kalshi.com/markets/${market.ticker}`,
-      };
-      processedMarkets.push(marketData);
+      const slug = `kalshi-${market.ticker}`;
+      
+      // Upsert market with correct schema (slug, title)
+      const { data: marketData, error: marketError } = await supabase
+        .from('markets')
+        .upsert({
+          slug,
+          title: market.title,
+          description: market.subtitle || market.title,
+          category: categoryMap[market.category || ''] || 'other',
+          status: market.status === 'open' ? 'active' : 'resolved',
+          resolution_date: market.close_time ? new Date(market.close_time).toISOString() : null,
+          updated_at: new Date().toISOString()
+        }, { onConflict: 'slug' })
+        .select('id')
+        .single();
+
+      if (marketError) {
+        console.error('Error upserting Kalshi market:', marketError);
+        continue;
+      }
+
+      marketsUpserted++;
 
       // Calculate mid prices from bid/ask
       const yesPrice = market.yes_bid && market.yes_ask 
         ? (market.yes_bid + market.yes_ask) / 2 / 100 
-        : market.yes_bid / 100 || 0;
+        : (market.yes_bid || 50) / 100;
       const noPrice = market.no_bid && market.no_ask 
         ? (market.no_bid + market.no_ask) / 2 / 100 
-        : market.no_bid / 100 || 0;
+        : (market.no_bid || 50) / 100;
 
-      processedPrices.push({
-        market_external_id: `kalshi_${market.ticker}`,
-        platform: 'kalshi' as const,
-        yes_price: yesPrice,
-        no_price: noPrice,
+      // Insert price data
+      const { error: priceError } = await supabase.from('prices').insert({
+        market_id: marketData.id,
+        platform: 'kalshi',
+        yes_price: Math.round(yesPrice * 100) / 100,
+        no_price: Math.round(noPrice * 100) / 100,
         volume_24h: market.volume_24h || 0,
+        total_volume: market.volume || 0
       });
+
+      if (!priceError) pricesInserted++;
     }
 
-    // Upsert markets
-    const { error: marketsError } = await supabase
-      .from('markets')
-      .upsert(processedMarkets, { onConflict: 'external_id' });
-
-    if (marketsError) {
-      console.error('Error upserting markets:', marketsError);
-    } else {
-      console.log(`Upserted ${processedMarkets.length} markets`);
-    }
-
-    // Get market IDs for prices
-    const { data: storedMarkets } = await supabase
-      .from('markets')
-      .select('id, external_id')
-      .in('external_id', processedMarkets.map(m => m.external_id));
-
-    if (storedMarkets && storedMarkets.length > 0) {
-      const marketIdMap = new Map(storedMarkets.map(m => [m.external_id, m.id]));
-      
-      const pricesToInsert = processedPrices
-        .filter(p => marketIdMap.has(p.market_external_id))
-        .map(p => ({
-          market_id: marketIdMap.get(p.market_external_id),
-          platform: p.platform,
-          yes_price: p.yes_price,
-          no_price: p.no_price,
-          volume_24h: p.volume_24h,
-        }));
-
-      if (pricesToInsert.length > 0) {
-        const { error: pricesError } = await supabase
-          .from('prices')
-          .insert(pricesToInsert);
-
-        if (pricesError) {
-          console.error('Error inserting prices:', pricesError);
-        } else {
-          console.log(`Inserted ${pricesToInsert.length} price records`);
-        }
-      }
-    }
+    console.log(`Upserted ${marketsUpserted} markets, inserted ${pricesInserted} prices`);
 
     return new Response(
       JSON.stringify({
         success: true,
         markets_found: markets.length,
-        markets_stored: processedMarkets.length,
-        sample_markets: processedMarkets.slice(0, 5).map(m => ({
-          name: m.name,
+        markets_upserted: marketsUpserted,
+        prices_inserted: pricesInserted,
+        sample_markets: markets.slice(0, 3).map(m => ({
+          title: m.title,
           category: m.category,
-          volume: m.total_volume,
         })),
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
