@@ -29,6 +29,90 @@ interface KalshiMarket {
   category?: string;
 }
 
+// Category mapping based on ticker prefix and title
+function getCategoryFromTicker(ticker: string, title: string): 'politics' | 'crypto' | 'sports' | 'economics' | 'entertainment' | 'other' {
+  const upperTicker = ticker.toUpperCase();
+  const upperTitle = title.toUpperCase();
+  
+  // Politics & Elections
+  if (upperTicker.includes('ELECTION') || 
+      upperTicker.includes('PRESIDENT') || 
+      upperTicker.includes('TRUMP') ||
+      upperTicker.includes('BIDEN') ||
+      upperTicker.includes('CONGRESS') ||
+      upperTicker.startsWith('KXELECT') ||
+      upperTitle.includes('ELECTION') ||
+      upperTitle.includes('PRESIDENT') ||
+      upperTitle.includes('TRUMP') ||
+      upperTitle.includes('BIDEN')) {
+    return 'politics';
+  }
+  
+  // Crypto
+  if (upperTicker.includes('BTC') || 
+      upperTicker.includes('ETH') || 
+      upperTicker.includes('CRYPTO') ||
+      upperTicker.includes('BITCOIN') ||
+      upperTicker.includes('ETHEREUM') ||
+      upperTicker.startsWith('KXBTC') ||
+      upperTicker.startsWith('KXETH') ||
+      upperTitle.includes('BITCOIN') ||
+      upperTitle.includes('ETHEREUM') ||
+      upperTitle.includes('CRYPTO')) {
+    return 'crypto';
+  }
+  
+  // Sports
+  if (upperTicker.includes('NBA') || 
+      upperTicker.includes('NFL') || 
+      upperTicker.includes('MLB') ||
+      upperTicker.includes('SPORTS') ||
+      upperTicker.includes('SUPER') ||
+      upperTicker.startsWith('KXNBA') ||
+      upperTicker.startsWith('KXNFL') ||
+      upperTicker.startsWith('KXMLB') ||
+      upperTitle.includes(' NBA ') ||
+      upperTitle.includes(' NFL ') ||
+      upperTitle.includes(' MLB ') ||
+      upperTitle.includes('SUPERBOWL') ||
+      upperTitle.includes('SUPER BOWL') ||
+      upperTitle.includes('WINS BY') ||
+      upperTitle.includes('POINTS SCORED') ||
+      upperTitle.includes('BOSTON') ||
+      upperTitle.includes('LAKERS') ||
+      upperTitle.includes('CELTICS')) {
+    return 'sports';
+  }
+  
+  // Economics
+  if (upperTicker.includes('FED') || 
+      upperTicker.includes('GDP') || 
+      upperTicker.includes('INFLATION') ||
+      upperTicker.includes('RATE') ||
+      upperTicker.includes('RECESSION') ||
+      upperTicker.startsWith('KXFED') ||
+      upperTicker.startsWith('KXGDP') ||
+      upperTitle.includes('INFLATION') ||
+      upperTitle.includes('UNEMPLOYMENT') ||
+      upperTitle.includes('GDP') ||
+      upperTitle.includes('INTEREST RATE') ||
+      upperTitle.includes('RECESSION')) {
+    return 'economics';
+  }
+  
+  // Entertainment
+  if (upperTicker.includes('OSCAR') ||
+      upperTicker.includes('EMMY') ||
+      upperTitle.includes('OSCAR') ||
+      upperTitle.includes('EMMY') ||
+      upperTitle.includes('MOVIE') ||
+      upperTitle.includes('GRAMMY')) {
+    return 'entertainment';
+  }
+  
+  return 'other';
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -61,16 +145,7 @@ serve(async (req) => {
     let pricesInserted = 0;
 
     for (const market of markets) {
-      // Map Kalshi category to our categories
-      const categoryMap: Record<string, 'politics' | 'crypto' | 'sports' | 'economy' | 'other'> = {
-        'Politics': 'politics',
-        'Economics': 'economy',
-        'Science': 'other',
-        'Sports': 'sports',
-        'Entertainment': 'other',
-        'Crypto': 'crypto',
-      };
-
+      const category = getCategoryFromTicker(market.ticker, market.title);
       const slug = `kalshi-${market.ticker}`;
       
       // Upsert market with correct schema (slug, title)
@@ -80,7 +155,8 @@ serve(async (req) => {
           slug,
           title: market.title,
           description: market.subtitle || market.title,
-          category: categoryMap[market.category || ''] || 'other',
+          category,
+          platform: 'kalshi',
           status: market.status === 'open' ? 'active' : 'resolved',
           resolution_date: market.close_time ? new Date(market.close_time).toISOString() : null,
           updated_at: new Date().toISOString()
