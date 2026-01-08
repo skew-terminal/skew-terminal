@@ -12,110 +12,99 @@ const EventDetailPage = () => {
   const { id } = useParams();
   const navigate = useNavigate();
 
-  // Fetch spread details by market slug or spread id
+  // Fetch spread details by spread id
   const { data: spreadData, isLoading } = useQuery({
     queryKey: ["spread-detail", id],
     queryFn: async () => {
-      // First try to find by spread id
-      let spreadQuery = supabase
+      // First try to find spread by ID directly
+      const { data: spread, error } = await supabase
         .from("spreads")
         .select(`
           *,
           market:markets(*)
         `)
-        .eq("is_active", true);
+        .eq("id", id)
+        .maybeSingle();
 
-      // Try to match by market slug
+      if (spread) {
+        // Get prices for this market
+        const marketId = spread.market_id;
+        const { data: prices } = await supabase
+          .from("prices")
+          .select("*")
+          .eq("market_id", marketId)
+          .order("recorded_at", { ascending: false })
+          .limit(10);
+
+        // Get mapping to find the matched market
+        const { data: mapping } = await supabase
+          .from("market_mappings")
+          .select("market_a_id, market_b_id")
+          .or(`market_a_id.eq.${marketId},market_b_id.eq.${marketId}`)
+          .limit(1)
+          .maybeSingle();
+
+        let otherMarket = null;
+        let otherPrices: any[] = [];
+        
+        if (mapping) {
+          const otherMarketId = mapping.market_a_id === marketId 
+            ? mapping.market_b_id 
+            : mapping.market_a_id;
+
+          const { data: other } = await supabase
+            .from("markets")
+            .select("*")
+            .eq("id", otherMarketId)
+            .maybeSingle();
+          
+          otherMarket = other;
+
+          if (otherMarketId) {
+            const { data: op } = await supabase
+              .from("prices")
+              .select("*")
+              .eq("market_id", otherMarketId)
+              .order("recorded_at", { ascending: false })
+              .limit(10);
+            otherPrices = op || [];
+          }
+        }
+
+        return {
+          spread,
+          market: Array.isArray(spread.market) ? spread.market[0] : spread.market,
+          prices: prices || [],
+          otherMarket,
+          otherPrices
+        };
+      }
+
+      // Fallback: try to find by slug
       const { data: marketData } = await supabase
         .from("markets")
-        .select("id")
+        .select("*")
         .eq("slug", id)
         .maybeSingle();
-
-      if (marketData) {
-        spreadQuery = spreadQuery.eq("market_id", marketData.id);
-      }
-
-      const { data: spreads } = await spreadQuery.limit(1);
-      const spread = spreads?.[0];
-
-      if (!spread) {
-        // If no spread found, try to get market directly
-        const { data: market } = await supabase
-          .from("markets")
-          .select("*")
-          .eq("slug", id)
-          .maybeSingle();
-        
-        if (market) {
-          // Get prices for this market
-          const { data: prices } = await supabase
-            .from("prices")
-            .select("*")
-            .eq("market_id", market.id)
-            .order("recorded_at", { ascending: false })
-            .limit(2);
-
-          return {
-            market,
-            prices: prices || [],
-            spread: null
-          };
-        }
-        return null;
-      }
-
-      // Get prices for both platforms
-      const marketId = spread.market_id;
-      const { data: prices } = await supabase
-        .from("prices")
-        .select("*")
-        .eq("market_id", marketId)
-        .order("recorded_at", { ascending: false })
-        .limit(10);
-
-      // Get mapping to find the other market
-      const { data: mapping } = await supabase
-        .from("market_mappings")
-        .select("market_a_id, market_b_id")
-        .or(`market_a_id.eq.${marketId},market_b_id.eq.${marketId}`)
-        .limit(1)
-        .maybeSingle();
-
-      let otherMarket = null;
-      let otherPrices: any[] = [];
       
-      if (mapping) {
-        const otherMarketId = mapping.market_a_id === marketId 
-          ? mapping.market_b_id 
-          : mapping.market_a_id;
-
-        const { data: other } = await supabase
-          .from("markets")
+      if (marketData) {
+        const { data: prices } = await supabase
+          .from("prices")
           .select("*")
-          .eq("id", otherMarketId)
-          .maybeSingle();
-        
-        otherMarket = other;
+          .eq("market_id", marketData.id)
+          .order("recorded_at", { ascending: false })
+          .limit(10);
 
-        if (otherMarketId) {
-          const { data: op } = await supabase
-            .from("prices")
-            .select("*")
-            .eq("market_id", otherMarketId)
-            .order("recorded_at", { ascending: false })
-            .limit(10);
-          otherPrices = op || [];
-        }
+        return {
+          market: marketData,
+          prices: prices || [],
+          spread: null,
+          otherMarket: null,
+          otherPrices: []
+        };
       }
 
-      return {
-        spread,
-        market: Array.isArray(spread.market) ? spread.market[0] : spread.market,
-        prices: prices || [],
-        otherMarket,
-        otherPrices
-      };
+      return null;
     },
     enabled: !!id
   });

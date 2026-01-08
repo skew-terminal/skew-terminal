@@ -85,8 +85,8 @@ export const SpreadScanner = () => {
     return (profit / max) * 100;
   };
 
-  const handleRowClick = (slug: string) => {
-    navigate(`/event/${slug}`);
+  const handleRowClick = (spreadId: string) => {
+    navigate(`/event/${spreadId}`);
   };
 
   const handleSort = (field: SortField) => {
@@ -197,7 +197,7 @@ export const SpreadScanner = () => {
             return (
               <div
                 key={opp.id}
-                onClick={() => handleRowClick(opp.slug)}
+                onClick={() => handleRowClick(opp.id)}
                 className={`group grid grid-cols-[2fr_0.8fr_1fr_1fr_0.8fr_1fr_0.8fr] gap-1 px-3 py-1.5 cursor-pointer transition-all hover:bg-secondary/60 ${
                   index % 2 === 1 ? "bg-white/[0.02]" : ""
                 } ${isHighSkew ? "hover:shadow-[inset_0_0_20px_rgba(57,255,20,0.05)]" : ""}`}
