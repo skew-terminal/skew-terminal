@@ -8,27 +8,10 @@ const corsHeaders = {
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-const BSC_RPC_URL = Deno.env.get('BSC_RPC_URL')!;
 
 // PancakeSwap Prediction Contract on BSC
+const BSC_RPC = 'https://bsc-dataseed.binance.org/';
 const PREDICTION_CONTRACT = '0x18B2A687610328590Bc8F2e5fEdDe3b582A49cdA';
-
-// Contract ABI for reading rounds
-const PREDICTION_ABI = [
-  'function currentEpoch() view returns (uint256)',
-  'function rounds(uint256) view returns (tuple(uint256 epoch, uint256 startTimestamp, uint256 lockTimestamp, uint256 closeTimestamp, int256 lockPrice, int256 closePrice, uint256 lockOracleId, uint256 closeOracleId, uint256 totalAmount, uint256 bullAmount, uint256 bearAmount, uint256 rewardBaseCalAmount, uint256 rewardAmount, bool oracleCalled))'
-];
-
-interface PredictionRound {
-  epoch: number;
-  bullAmount: string;
-  bearAmount: string;
-  totalAmount: string;
-  lockPrice: string;
-  startTimestamp: number;
-  lockTimestamp: number;
-  closeTimestamp: number;
-}
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -41,7 +24,7 @@ serve(async (req) => {
     console.log('Fetching PancakeSwap Predictions from BSC...');
 
     // Get current epoch
-    const epochResponse = await fetch(BSC_RPC_URL, {
+    const epochResponse = await fetch(BSC_RPC, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -64,101 +47,164 @@ serve(async (req) => {
     const currentEpoch = parseInt(epochResult.result, 16);
     console.log(`Current PancakeSwap epoch: ${currentEpoch}`);
 
-    // Fetch last 5 rounds
-    const rounds: PredictionRound[] = [];
-    
-    for (let i = 0; i < 5; i++) {
+    let marketsUpserted = 0;
+    let pricesInserted = 0;
+
+    // Check if contract is paused
+    const pausedResponse = await fetch(BSC_RPC, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        jsonrpc: '2.0',
+        id: 2,
+        method: 'eth_call',
+        params: [{
+          to: PREDICTION_CONTRACT,
+          data: '0x5c975abb' // paused() selector
+        }, 'latest']
+      })
+    });
+    const pausedResult = await pausedResponse.json();
+    const isPaused = pausedResult.result && pausedResult.result !== '0x0000000000000000000000000000000000000000000000000000000000000000';
+    console.log(`Contract paused: ${isPaused}`);
+
+    // Fetch rounds - try older ones (100-200 epochs back for historical data)
+    for (let i = 100; i <= 110; i++) {
       const epoch = currentEpoch - i;
       
-      // Encode the rounds(epoch) call
-      const epochHex = epoch.toString(16).padStart(64, '0');
-      const callData = `0x8e7ea5b2${epochHex}`; // rounds(uint256) selector
-      
-      const roundResponse = await fetch(BSC_RPC_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          jsonrpc: '2.0',
-          id: epoch,
-          method: 'eth_call',
-          params: [{
-            to: PREDICTION_CONTRACT,
-            data: callData
-          }, 'latest']
-        })
-      });
+      try {
+        // Encode the rounds(epoch) call
+        const epochHex = epoch.toString(16).padStart(64, '0');
+        const callData = `0x8e7ea5b2${epochHex}`; // rounds(uint256) selector
+        
+        const roundResponse = await fetch(BSC_RPC, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            jsonrpc: '2.0',
+            id: epoch,
+            method: 'eth_call',
+            params: [{
+              to: PREDICTION_CONTRACT,
+              data: callData
+            }, 'latest']
+          })
+        });
 
-      const roundResult = await roundResponse.json();
-      
-      if (!roundResult.error && roundResult.result && roundResult.result !== '0x') {
-        // Parse the round data (simplified - actual decoding would need proper ABI parsing)
+        const roundResult = await roundResponse.json();
+        
+        console.log(`Epoch ${epoch} result:`, roundResult.error ? 'error' : (roundResult.result ? `data len ${roundResult.result.length}` : 'empty'));
+        
+        if (roundResult.error || !roundResult.result || roundResult.result === '0x') {
+          console.log(`Round ${epoch} skipped:`, roundResult.error?.message || 'empty result');
+          continue;
+        }
+
+        // Parse the round data
         const data = roundResult.result.slice(2);
         
-        // Extract key values (positions based on struct layout)
-        const totalAmount = BigInt('0x' + data.slice(576, 640)).toString();
-        const bullAmount = BigInt('0x' + data.slice(640, 704)).toString();
-        const bearAmount = BigInt('0x' + data.slice(704, 768)).toString();
-        
-        if (BigInt(totalAmount) > 0) {
-          rounds.push({
-            epoch,
-            totalAmount,
-            bullAmount,
-            bearAmount,
-            lockPrice: '0',
-            startTimestamp: 0,
-            lockTimestamp: 0,
-            closeTimestamp: 0
-          });
+        // Log first round data for debugging
+        if (i === 0) {
+          console.log(`Data length: ${data.length}, first 200 chars: ${data.slice(0, 200)}`);
         }
-      }
-    }
+        
+        // Extract values (positions based on struct layout)
+        const totalAmount = BigInt('0x' + data.slice(576, 640));
+        const bullAmount = BigInt('0x' + data.slice(640, 704));
+        const bearAmount = BigInt('0x' + data.slice(704, 768));
+        
+        if (i === 0) {
+          console.log(`Epoch ${epoch}: total=${totalAmount}, bull=${bullAmount}, bear=${bearAmount}`);
+        }
+        
+        if (totalAmount === BigInt(0)) continue;
 
-    console.log(`Fetched ${rounds.length} active PancakeSwap rounds`);
+        const totalBNB = Number(totalAmount) / 1e18;
+        const bullBNB = Number(bullAmount) / 1e18;
+        const bearBNB = Number(bearAmount) / 1e18;
 
-    // Store as whale trades (large bets)
-    for (const round of rounds) {
-      const totalBNB = parseFloat(round.totalAmount) / 1e18;
-      
-      if (totalBNB > 10) { // Only track rounds with >10 BNB
-        // Get or create whale wallet for PancakeSwap contract
-        const { data: wallet } = await supabase
-          .from('whale_wallets')
+        // Calculate probabilities
+        const bullProb = bullBNB / totalBNB;
+        const bearProb = bearBNB / totalBNB;
+
+        const slug = `pancakeswap-epoch-${epoch}`;
+        const title = `BNB Price Round ${epoch}`;
+
+        // Upsert market
+        const { data: marketData, error: marketError } = await supabase
+          .from('markets')
           .upsert({
-            address: PREDICTION_CONTRACT,
-            chain: 'bsc',
-            label: 'PancakeSwap Prediction',
-            is_tracked: true,
-            last_active_at: new Date().toISOString(),
+            slug,
+            title,
+            description: 'BNB/USD 5-minute price prediction on PancakeSwap',
+            category: 'crypto',
+            platform: 'pancakeswap',
+            status: 'active',
+            resolution_date: new Date(Date.now() + 5 * 60000).toISOString(),
             updated_at: new Date().toISOString()
-          }, { onConflict: 'address' })
+          }, { onConflict: 'slug' })
           .select('id')
           .single();
 
-        if (wallet) {
-          const bullBNB = parseFloat(round.bullAmount) / 1e18;
-          const bearBNB = parseFloat(round.bearAmount) / 1e18;
-          const bullPercent = (bullBNB / totalBNB) * 100;
-
-          await supabase.from('whale_trades').upsert({
-            wallet_id: wallet.id,
-            tx_hash: `pancake-epoch-${round.epoch}`,
-            amount: totalBNB,
-            action: 'prediction',
-            side: bullPercent > 50 ? 'bull' : 'bear',
-            price: bullPercent,
-            executed_at: new Date().toISOString()
-          }, { onConflict: 'tx_hash' });
+        if (marketError) {
+          console.error('Error upserting market:', marketError.message);
+          continue;
         }
+
+        marketsUpserted++;
+
+        // Insert price data
+        const { error: priceError } = await supabase.from('prices').insert({
+          market_id: marketData.id,
+          platform: 'pancakeswap',
+          yes_price: Math.round(bullProb * 100) / 100,
+          no_price: Math.round(bearProb * 100) / 100,
+          volume_24h: totalBNB,
+          total_volume: totalBNB
+        });
+
+        if (!priceError) pricesInserted++;
+
+        // Also track as whale trade if >50 BNB
+        if (totalBNB > 50) {
+          const { data: wallet } = await supabase
+            .from('whale_wallets')
+            .upsert({
+              address: PREDICTION_CONTRACT,
+              chain: 'bsc',
+              label: 'PancakeSwap Prediction',
+              is_tracked: true,
+              last_active_at: new Date().toISOString(),
+              updated_at: new Date().toISOString()
+            }, { onConflict: 'address' })
+            .select('id')
+            .single();
+
+          if (wallet) {
+            await supabase.from('whale_trades').upsert({
+              wallet_id: wallet.id,
+              tx_hash: `pancake-epoch-${epoch}`,
+              amount: totalBNB,
+              action: 'prediction',
+              side: bullProb > 0.5 ? 'bull' : 'bear',
+              price: bullProb * 100,
+              executed_at: new Date().toISOString()
+            }, { onConflict: 'tx_hash' });
+          }
+        }
+      } catch (err) {
+        console.error(`Error processing epoch ${epoch}:`, err);
       }
     }
+
+    console.log(`Upserted ${marketsUpserted} markets, inserted ${pricesInserted} prices`);
 
     return new Response(
       JSON.stringify({
         success: true,
         current_epoch: currentEpoch,
-        rounds_fetched: rounds.length,
-        rpc_status: 'connected'
+        markets_upserted: marketsUpserted,
+        prices_inserted: pricesInserted
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
