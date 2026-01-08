@@ -14,6 +14,51 @@ export type Database = {
   }
   public: {
     Tables: {
+      market_mappings: {
+        Row: {
+          created_at: string | null
+          id: string
+          manual_verified: boolean | null
+          market_a_id: string
+          market_b_id: string
+          similarity_score: number
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          manual_verified?: boolean | null
+          market_a_id: string
+          market_b_id: string
+          similarity_score: number
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          manual_verified?: boolean | null
+          market_a_id?: string
+          market_b_id?: string
+          similarity_score?: number
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "market_mappings_market_a_id_fkey"
+            columns: ["market_a_id"]
+            isOneToOne: false
+            referencedRelation: "markets"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "market_mappings_market_b_id_fkey"
+            columns: ["market_b_id"]
+            isOneToOne: false
+            referencedRelation: "markets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       markets: {
         Row: {
           category: Database["public"]["Enums"]["market_category"]
@@ -21,6 +66,7 @@ export type Database = {
           description: string | null
           id: string
           image_url: string | null
+          platform: string
           resolution_date: string | null
           slug: string
           status: Database["public"]["Enums"]["market_status"]
@@ -33,6 +79,7 @@ export type Database = {
           description?: string | null
           id?: string
           image_url?: string | null
+          platform?: string
           resolution_date?: string | null
           slug: string
           status?: Database["public"]["Enums"]["market_status"]
@@ -45,6 +92,7 @@ export type Database = {
           description?: string | null
           id?: string
           image_url?: string | null
+          platform?: string
           resolution_date?: string | null
           slug?: string
           status?: Database["public"]["Enums"]["market_status"]
