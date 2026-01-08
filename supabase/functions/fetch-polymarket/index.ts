@@ -63,6 +63,7 @@ serve(async (req) => {
             title: title,
             category: category,
             status: 'active',
+            platform: 'polymarket',
             resolution_date: market.endDate || market.end_date_iso || null,
             description: market.description || null,
             image_url: market.image || null,
