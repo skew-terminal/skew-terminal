@@ -202,15 +202,15 @@ serve(async (req) => {
       }
     }
 
-    // Deduplicate by ticker and filter out parlays (multi-game bets)
+    // Deduplicate by ticker and filter out obvious parlays
     const uniqueMarkets = new Map<string, KalshiMarket>();
     for (const market of allMarkets) {
       if (!uniqueMarkets.has(market.ticker)) {
-        // Skip parlays (contain multiple "yes" or comma-separated outcomes)
-        const isParlay = (market.title.match(/yes /gi) || []).length > 1 ||
-                         market.title.includes(',yes ') ||
-                         market.ticker.includes('MULTIGAME') ||
-                         market.ticker.includes('PARLAY');
+        // Skip obvious parlays (MULTIGAME in ticker or multiple comma-separated items)
+        const commaCount = (market.title.match(/,/g) || []).length;
+        const isParlay = market.ticker.includes('MULTIGAME') ||
+                         market.ticker.includes('PARLAY') ||
+                         commaCount > 3; // More than 3 commas = likely parlay
         
         if (!isParlay) {
           uniqueMarkets.set(market.ticker, market);
