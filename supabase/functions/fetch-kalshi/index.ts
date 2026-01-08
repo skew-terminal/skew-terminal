@@ -10,7 +10,7 @@ const corsHeaders = {
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL');
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
 
-// Kalshi public API base URL (no auth required for market data)
+// Kalshi public API base URL
 const KALSHI_API_BASE = 'https://api.elections.kalshi.com/trade-api/v2';
 
 interface KalshiMarket {
@@ -27,7 +27,32 @@ interface KalshiMarket {
   open_interest: number;
   close_time?: string;
   category?: string;
+  event_ticker?: string;
 }
+
+// Category configurations for fetching
+const CATEGORY_CONFIGS = [
+  { 
+    name: 'politics', 
+    seriesTickers: ['KXELECTION', 'KXPRES', 'KXCONGRESS', 'KXGOV'],
+    limit: 50 
+  },
+  { 
+    name: 'crypto', 
+    seriesTickers: ['KXBTC', 'KXETH', 'KXCRYPTO'],
+    limit: 50 
+  },
+  { 
+    name: 'economics', 
+    seriesTickers: ['KXFED', 'KXGDP', 'KXINFLATION', 'KXRATE', 'KXCPI'],
+    limit: 50 
+  },
+  { 
+    name: 'sports', 
+    seriesTickers: ['KXNFL', 'KXNBA', 'KXMLB', 'KXSUPERBOWL'],
+    limit: 50 
+  }
+];
 
 // Category mapping based on ticker prefix and title
 function getCategoryFromTicker(ticker: string, title: string): 'politics' | 'crypto' | 'sports' | 'economics' | 'entertainment' | 'other' {
@@ -37,14 +62,18 @@ function getCategoryFromTicker(ticker: string, title: string): 'politics' | 'cry
   // Politics & Elections
   if (upperTicker.includes('ELECTION') || 
       upperTicker.includes('PRESIDENT') || 
+      upperTicker.includes('PRES') ||
       upperTicker.includes('TRUMP') ||
       upperTicker.includes('BIDEN') ||
       upperTicker.includes('CONGRESS') ||
-      upperTicker.startsWith('KXELECT') ||
+      upperTicker.includes('GOV') ||
       upperTitle.includes('ELECTION') ||
       upperTitle.includes('PRESIDENT') ||
       upperTitle.includes('TRUMP') ||
-      upperTitle.includes('BIDEN')) {
+      upperTitle.includes('BIDEN') ||
+      upperTitle.includes('GOVERNOR') ||
+      upperTitle.includes('SENATE') ||
+      upperTitle.includes('CONGRESS')) {
     return 'politics';
   }
   
@@ -54,34 +83,12 @@ function getCategoryFromTicker(ticker: string, title: string): 'politics' | 'cry
       upperTicker.includes('CRYPTO') ||
       upperTicker.includes('BITCOIN') ||
       upperTicker.includes('ETHEREUM') ||
-      upperTicker.startsWith('KXBTC') ||
-      upperTicker.startsWith('KXETH') ||
       upperTitle.includes('BITCOIN') ||
       upperTitle.includes('ETHEREUM') ||
-      upperTitle.includes('CRYPTO')) {
+      upperTitle.includes('CRYPTO') ||
+      upperTitle.includes('BTC') ||
+      upperTitle.includes('ETH')) {
     return 'crypto';
-  }
-  
-  // Sports
-  if (upperTicker.includes('NBA') || 
-      upperTicker.includes('NFL') || 
-      upperTicker.includes('MLB') ||
-      upperTicker.includes('SPORTS') ||
-      upperTicker.includes('SUPER') ||
-      upperTicker.startsWith('KXNBA') ||
-      upperTicker.startsWith('KXNFL') ||
-      upperTicker.startsWith('KXMLB') ||
-      upperTitle.includes(' NBA ') ||
-      upperTitle.includes(' NFL ') ||
-      upperTitle.includes(' MLB ') ||
-      upperTitle.includes('SUPERBOWL') ||
-      upperTitle.includes('SUPER BOWL') ||
-      upperTitle.includes('WINS BY') ||
-      upperTitle.includes('POINTS SCORED') ||
-      upperTitle.includes('BOSTON') ||
-      upperTitle.includes('LAKERS') ||
-      upperTitle.includes('CELTICS')) {
-    return 'sports';
   }
   
   // Economics
@@ -90,14 +97,31 @@ function getCategoryFromTicker(ticker: string, title: string): 'politics' | 'cry
       upperTicker.includes('INFLATION') ||
       upperTicker.includes('RATE') ||
       upperTicker.includes('RECESSION') ||
-      upperTicker.startsWith('KXFED') ||
-      upperTicker.startsWith('KXGDP') ||
+      upperTicker.includes('CPI') ||
       upperTitle.includes('INFLATION') ||
       upperTitle.includes('UNEMPLOYMENT') ||
       upperTitle.includes('GDP') ||
       upperTitle.includes('INTEREST RATE') ||
-      upperTitle.includes('RECESSION')) {
+      upperTitle.includes('RECESSION') ||
+      upperTitle.includes('FEDERAL RESERVE') ||
+      upperTitle.includes('CPI')) {
     return 'economics';
+  }
+  
+  // Sports
+  if (upperTicker.includes('NBA') || 
+      upperTicker.includes('NFL') || 
+      upperTicker.includes('MLB') ||
+      upperTicker.includes('SPORTS') ||
+      upperTicker.includes('SUPER') ||
+      upperTitle.includes('SUPER BOWL') ||
+      upperTitle.includes('SUPERBOWL') ||
+      upperTitle.includes('NFL') ||
+      upperTitle.includes('NBA') ||
+      upperTitle.includes('MLB') ||
+      upperTitle.includes('WORLD SERIES') ||
+      upperTitle.includes('CHAMPIONSHIP')) {
+    return 'sports';
   }
   
   // Entertainment
@@ -113,42 +137,102 @@ function getCategoryFromTicker(ticker: string, title: string): 'politics' | 'cry
   return 'other';
 }
 
+// Fetch markets from a specific endpoint
+async function fetchMarkets(url: string): Promise<KalshiMarket[]> {
+  try {
+    const response = await fetch(url, {
+      headers: { 'Accept': 'application/json' },
+    });
+    
+    if (!response.ok) {
+      console.error(`Kalshi API error for ${url}: ${response.status}`);
+      return [];
+    }
+    
+    const data = await response.json();
+    return data.markets || [];
+  } catch (error) {
+    console.error(`Error fetching ${url}:`, error);
+    return [];
+  }
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    console.log('Fetching Kalshi markets data...');
+    console.log('Fetching Kalshi markets from multiple categories...');
 
     const supabase = createClient(SUPABASE_URL!, SUPABASE_SERVICE_ROLE_KEY!);
 
-    // Fetch markets from Kalshi public API
-    const marketsResponse = await fetch(`${KALSHI_API_BASE}/markets?limit=100&status=open`, {
-      headers: {
-        'Accept': 'application/json',
-      },
-    });
+    const allMarkets: KalshiMarket[] = [];
+    const categoryStats: Record<string, number> = {};
 
-    if (!marketsResponse.ok) {
-      const errorText = await marketsResponse.text();
-      console.error('Kalshi API error:', errorText);
-      throw new Error(`Kalshi API error: ${marketsResponse.status}`);
+    // 1. Fetch general markets (top 100 by volume)
+    console.log('Fetching general markets...');
+    const generalMarkets = await fetchMarkets(
+      `${KALSHI_API_BASE}/markets?limit=100&status=open`
+    );
+    allMarkets.push(...generalMarkets);
+    categoryStats['general'] = generalMarkets.length;
+    console.log(`Got ${generalMarkets.length} general markets`);
+
+    // 2. Try to fetch from specific event tickers for more variety
+    const eventTickers = [
+      'TRUMPPOPVOTE', 'PRES', 'SENATE', 'GOVERNOR',  // Politics
+      'BTCMAX', 'BTCMIN', 'ETHMAX',                   // Crypto
+      'FEDFUNDS', 'CPI', 'UNEMPLOYMENT',              // Economics
+      'SUPERBOWL', 'NFLPLAYOFFS'                      // Sports
+    ];
+
+    for (const eventTicker of eventTickers) {
+      try {
+        const markets = await fetchMarkets(
+          `${KALSHI_API_BASE}/markets?limit=20&status=open&event_ticker=${eventTicker}`
+        );
+        if (markets.length > 0) {
+          allMarkets.push(...markets);
+          categoryStats[eventTicker] = markets.length;
+          console.log(`Got ${markets.length} markets for ${eventTicker}`);
+        }
+      } catch (e) {
+        // Silently skip if event ticker doesn't exist
+      }
     }
 
-    const marketsData = await marketsResponse.json();
-    const markets: KalshiMarket[] = marketsData.markets || [];
-    console.log(`Found ${markets.length} markets from Kalshi`);
+    // Deduplicate by ticker and filter out parlays (multi-game bets)
+    const uniqueMarkets = new Map<string, KalshiMarket>();
+    for (const market of allMarkets) {
+      if (!uniqueMarkets.has(market.ticker)) {
+        // Skip parlays (contain multiple "yes" or comma-separated outcomes)
+        const isParlay = (market.title.match(/yes /gi) || []).length > 1 ||
+                         market.title.includes(',yes ') ||
+                         market.ticker.includes('MULTIGAME') ||
+                         market.ticker.includes('PARLAY');
+        
+        if (!isParlay) {
+          uniqueMarkets.set(market.ticker, market);
+        }
+      }
+    }
+
+    const markets = Array.from(uniqueMarkets.values());
+    console.log(`Total unique markets: ${markets.length}`);
 
     // Process and store markets
     let marketsUpserted = 0;
     let pricesInserted = 0;
+    const categoryCounts: Record<string, number> = {};
 
     for (const market of markets) {
       const category = getCategoryFromTicker(market.ticker, market.title);
+      categoryCounts[category] = (categoryCounts[category] || 0) + 1;
+      
       const slug = `kalshi-${market.ticker}`;
       
-      // Upsert market with correct schema (slug, title)
+      // Upsert market
       const { data: marketData, error: marketError } = await supabase
         .from('markets')
         .upsert({
@@ -165,7 +249,7 @@ serve(async (req) => {
         .single();
 
       if (marketError) {
-        console.error('Error upserting Kalshi market:', marketError);
+        console.error('Error upserting market:', marketError.message);
         continue;
       }
 
@@ -183,8 +267,8 @@ serve(async (req) => {
       const { error: priceError } = await supabase.from('prices').insert({
         market_id: marketData.id,
         platform: 'kalshi',
-        yes_price: Math.round(yesPrice * 100) / 100,
-        no_price: Math.round(noPrice * 100) / 100,
+        yes_price: Math.max(0.01, Math.min(0.99, yesPrice)),
+        no_price: Math.max(0.01, Math.min(0.99, noPrice)),
         volume_24h: market.volume_24h || 0,
         total_volume: market.volume || 0
       });
@@ -193,17 +277,17 @@ serve(async (req) => {
     }
 
     console.log(`Upserted ${marketsUpserted} markets, inserted ${pricesInserted} prices`);
+    console.log('Category distribution:', categoryCounts);
 
     return new Response(
       JSON.stringify({
         success: true,
-        markets_found: markets.length,
+        total_fetched: allMarkets.length,
+        unique_markets: markets.length,
         markets_upserted: marketsUpserted,
         prices_inserted: pricesInserted,
-        sample_markets: markets.slice(0, 3).map(m => ({
-          title: m.title,
-          category: m.category,
-        })),
+        category_distribution: categoryCounts,
+        fetch_stats: categoryStats
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
