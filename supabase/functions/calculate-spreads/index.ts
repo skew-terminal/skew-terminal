@@ -58,7 +58,7 @@ serve(async (req) => {
         no_price,
         volume_24h,
         recorded_at,
-        market:markets!inner(id, slug, title, category)
+        market:markets!inner(id, slug, title, category, platform)
       `)
       .order('recorded_at', { ascending: false });
 
@@ -68,6 +68,16 @@ serve(async (req) => {
 
     console.log(`Fetched ${prices?.length || 0} price records`);
 
+    // Get market mappings from match-markets function
+    const { data: mappings } = await supabase
+      .from('market_mappings')
+      .select('market_a_id, market_b_id, similarity_score');
+
+    console.log(`Found ${mappings?.length || 0} market mappings`);
+
+    // Create price lookup by market_id
+    const priceByMarket = new Map<string, PriceData>();
+    
     // Group prices by market slug (to match similar markets across platforms)
     const marketPrices = new Map<string, PriceData[]>();
     
@@ -84,6 +94,12 @@ serve(async (req) => {
         ...priceRow,
         market
       };
+
+      // Store latest price per market for mapping lookups
+      const existing = priceByMarket.get(price.market_id);
+      if (!existing || new Date(price.recorded_at) > new Date(existing.recorded_at)) {
+        priceByMarket.set(price.market_id, price);
+      }
 
       // Group by exact market_id
       const marketId = price.market_id;
@@ -148,6 +164,28 @@ serve(async (req) => {
           if (yesSpread && !isDuplicate(opportunities, yesSpread)) {
             opportunities.push(yesSpread);
           }
+        }
+      }
+    }
+
+    // Check opportunities from market_mappings (matched markets across platforms)
+    if (mappings && mappings.length > 0) {
+      for (const mapping of mappings) {
+        const priceA = priceByMarket.get(mapping.market_a_id);
+        const priceB = priceByMarket.get(mapping.market_b_id);
+        
+        if (!priceA || !priceB) continue;
+        if (priceA.platform === priceB.platform) continue; // Skip same platform
+        
+        const yesSpread = findYesArbitrage(priceA, priceB, priceA.market_id);
+        if (yesSpread && !isDuplicate(opportunities, yesSpread)) {
+          opportunities.push(yesSpread);
+          console.log(`Mapped market spread: ${yesSpread.skew_percentage}% - ${priceA.market.title.substring(0, 40)}`);
+        }
+        
+        const noSpread = findNoArbitrage(priceA, priceB, priceA.market_id);
+        if (noSpread && !isDuplicate(opportunities, noSpread)) {
+          opportunities.push(noSpread);
         }
       }
     }
