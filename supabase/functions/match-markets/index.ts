@@ -6,22 +6,54 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-// Normalize market title for matching
-function normalizeTitle(title: string): string {
+// Stop words to ignore in matching
+const STOP_WORDS = new Set([
+  'will', 'the', 'in', 'on', 'to', 'a', 'be', 'at', 'by', 'for', 'of',
+  'is', 'it', 'an', 'or', 'as', 'if', 'no', 'yes', 'and', 'with', 'this',
+  'that', 'from', 'has', 'have', 'not', 'but', 'are', 'was', 'were', 'been'
+]);
+
+// Important keywords that strongly indicate a match
+const IMPORTANT_KEYWORDS = [
+  'trump', 'biden', 'election', 'president', 'bitcoin', 'btc', 'ethereum', 'eth',
+  'super bowl', 'superbowl', 'nfl', 'nba', 'mlb', 'world cup', 'champions',
+  'fed', 'inflation', 'recession', 'gdp', 'interest rate',
+  'oscar', 'grammy', 'emmy', 'elon', 'musk', 'tesla',
+  // Sports teams
+  'eagles', 'chiefs', 'bills', 'ravens', 'lions', 'cowboys', 'packers',
+  'texans', 'steelers', 'broncos', 'dolphins', 'vikings', 'chargers',
+  'philadelphia', 'kansas city', 'buffalo', 'baltimore', 'detroit', 'houston',
+  'celtics', 'lakers', 'warriors', 'bucks', 'nuggets', 'heat', 'suns',
+  'boston', 'los angeles', 'golden state', 'milwaukee', 'denver', 'miami', 'phoenix'
+];
+
+interface Market {
+  id: string;
+  title: string;
+  category: string;
+  slug: string;
+  resolution_date?: string;
+}
+
+// Extract meaningful keywords from title
+function extractKeywords(title: string): string[] {
   return title
     .toLowerCase()
     .replace(/[^a-z0-9\s]/g, '')
-    .replace(/\s+/g, ' ')
-    .trim();
+    .split(/\s+/)
+    .filter(word => word.length > 2 && !STOP_WORDS.has(word));
 }
 
-// Calculate Jaccard similarity between two strings
-function calculateSimilarity(str1: string, str2: string): number {
-  const normalized1 = normalizeTitle(str1);
-  const normalized2 = normalizeTitle(str2);
-  
-  const words1 = new Set(normalized1.split(' ').filter(w => w.length > 2));
-  const words2 = new Set(normalized2.split(' ').filter(w => w.length > 2));
+// Check if title contains important keywords
+function findImportantKeywords(title: string): string[] {
+  const lowerTitle = title.toLowerCase();
+  return IMPORTANT_KEYWORDS.filter(keyword => lowerTitle.includes(keyword));
+}
+
+// Calculate basic Jaccard similarity
+function basicSimilarity(title1: string, title2: string): number {
+  const words1 = new Set(extractKeywords(title1));
+  const words2 = new Set(extractKeywords(title2));
   
   if (words1.size === 0 || words2.size === 0) return 0;
   
@@ -29,6 +61,53 @@ function calculateSimilarity(str1: string, str2: string): number {
   const union = new Set([...words1, ...words2]);
   
   return intersection.size / union.size;
+}
+
+// Advanced similarity calculation with multiple factors
+function calculateAdvancedSimilarity(market1: Market, market2: Market): number {
+  let score = 0;
+  
+  // 1. Basic title similarity (50% weight)
+  const titleSimilarity = basicSimilarity(market1.title, market2.title);
+  score += titleSimilarity * 0.5;
+  
+  // 2. Keyword matching (30% weight) - important keywords
+  const keywords1 = extractKeywords(market1.title);
+  const keywords2 = extractKeywords(market2.title);
+  const commonKeywords = keywords1.filter(k => keywords2.includes(k));
+  const keywordScore = commonKeywords.length / Math.max(keywords1.length, keywords2.length, 1);
+  score += keywordScore * 0.3;
+  
+  // 3. Important keyword matching (bonus)
+  const important1 = findImportantKeywords(market1.title);
+  const important2 = findImportantKeywords(market2.title);
+  const commonImportant = important1.filter(k => important2.includes(k));
+  if (commonImportant.length > 0) {
+    score += 0.15 * commonImportant.length; // Big bonus for matching important keywords
+  }
+  
+  // 4. Category bonus (10% weight)
+  if (market1.category === market2.category) {
+    score += 0.1;
+  }
+  
+  // 5. Date proximity bonus (10% weight)
+  if (market1.resolution_date && market2.resolution_date) {
+    try {
+      const date1 = new Date(market1.resolution_date).getTime();
+      const date2 = new Date(market2.resolution_date).getTime();
+      const daysDiff = Math.abs(date1 - date2) / (1000 * 60 * 60 * 24);
+      if (daysDiff < 7) {
+        score += 0.1;
+      } else if (daysDiff < 30) {
+        score += 0.05;
+      }
+    } catch {
+      // Ignore date parsing errors
+    }
+  }
+  
+  return Math.min(score, 1); // Cap at 1.0
 }
 
 serve(async (req) => {
@@ -42,20 +121,20 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
 
-    console.log('Starting market matching...');
+    console.log('Starting advanced market matching...');
 
-    // Get Kalshi markets
+    // Get Kalshi markets with resolution date
     const { data: kalshiMarkets, error: kalshiError } = await supabase
       .from('markets')
-      .select('id, title, category, slug')
+      .select('id, title, category, slug, resolution_date')
       .eq('platform', 'kalshi');
 
     if (kalshiError) throw kalshiError;
 
-    // Get Polymarket markets
+    // Get Polymarket markets with resolution date
     const { data: polymarketMarkets, error: polyError } = await supabase
       .from('markets')
-      .select('id, title, category, slug')
+      .select('id, title, category, slug, resolution_date')
       .eq('platform', 'polymarket');
 
     if (polyError) throw polyError;
@@ -70,27 +149,36 @@ serve(async (req) => {
     }
 
     let matchCount = 0;
-    const matches: Array<{ kalshi: string; poly: string; score: number }> = [];
+    const matches: Array<{ kalshi: string; poly: string; score: number; reason: string }> = [];
+    const THRESHOLD = 0.4; // Lowered from 0.5
 
     // Match each Kalshi market with best Polymarket match
     for (const kalshi of kalshiMarkets) {
-      let bestMatch = null;
+      let bestMatch: Market | null = null;
       let bestScore = 0;
+      let matchReason = '';
 
       for (const poly of polymarketMarkets) {
-        const similarity = calculateSimilarity(kalshi.title, poly.title);
+        const score = calculateAdvancedSimilarity(kalshi as Market, poly as Market);
         
-        // Boost score if same category
-        const categoryBoost = kalshi.category === poly.category ? 1.2 : 1;
-        const finalScore = similarity * categoryBoost;
-        
-        if (finalScore > bestScore && finalScore > 0.5) {
-          bestScore = finalScore;
-          bestMatch = poly;
+        if (score > bestScore && score >= THRESHOLD) {
+          bestScore = score;
+          bestMatch = poly as Market;
+          
+          // Determine reason for match
+          const commonImportant = findImportantKeywords(kalshi.title)
+            .filter(k => findImportantKeywords(poly.title).includes(k));
+          if (commonImportant.length > 0) {
+            matchReason = `keyword:${commonImportant[0]}`;
+          } else if (kalshi.category === poly.category) {
+            matchReason = `category:${kalshi.category}`;
+          } else {
+            matchReason = 'title_similarity';
+          }
         }
       }
 
-      if (bestMatch && bestScore > 0.5) {
+      if (bestMatch && bestScore >= THRESHOLD) {
         const { error } = await supabase
           .from('market_mappings')
           .upsert({
@@ -108,9 +196,10 @@ serve(async (req) => {
           matches.push({
             kalshi: kalshi.title.substring(0, 50),
             poly: bestMatch.title.substring(0, 50),
-            score: Math.round(bestScore * 100)
+            score: Math.round(bestScore * 100),
+            reason: matchReason
           });
-          console.log(`Matched: "${kalshi.title.substring(0, 40)}..." <-> "${bestMatch.title.substring(0, 40)}..." (${Math.round(bestScore * 100)}%)`);
+          console.log(`Matched (${matchReason}): "${kalshi.title.substring(0, 35)}..." <-> "${bestMatch.title.substring(0, 35)}..." (${Math.round(bestScore * 100)}%)`);
         }
       }
     }
@@ -123,7 +212,8 @@ serve(async (req) => {
         matched: matchCount,
         total_kalshi: kalshiMarkets.length,
         total_polymarket: polymarketMarkets.length,
-        matches: matches.slice(0, 10) // Return first 10 matches
+        threshold: THRESHOLD,
+        matches: matches.slice(0, 20) // Return first 20 matches
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
