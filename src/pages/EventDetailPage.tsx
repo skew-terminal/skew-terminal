@@ -1,23 +1,91 @@
 import { useParams, useNavigate } from "react-router-dom";
 import { TopNavBar } from "@/components/terminal/TopNavBar";
 import { IconSidebar } from "@/components/terminal/IconSidebar";
-import { ArrowLeft, TrendingUp, TrendingDown, Activity, Clock, ExternalLink, Loader2 } from "lucide-react";
+import { ArrowLeft, TrendingUp, Clock, ExternalLink, Loader2, AlertTriangle } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { AreaChart, Area, XAxis, YAxis, ResponsiveContainer, BarChart, Bar } from "recharts";
+import { AreaChart, Area, XAxis, YAxis, ResponsiveContainer } from "recharts";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+
+// Platform configuration with URLs and colors
+const PLATFORM_CONFIG: Record<string, { 
+  name: string; 
+  color: string; 
+  getUrl: (title: string, slug?: string) => string;
+  baseUrl: string;
+}> = {
+  kalshi: {
+    name: 'Kalshi',
+    color: 'bg-blue-500',
+    baseUrl: 'https://kalshi.com',
+    getUrl: (title) => `https://kalshi.com/search?query=${encodeURIComponent(title.substring(0, 50))}`
+  },
+  polymarket: {
+    name: 'Polymarket', 
+    color: 'bg-purple-500',
+    baseUrl: 'https://polymarket.com',
+    getUrl: (title) => `https://polymarket.com/search?query=${encodeURIComponent(title.substring(0, 50))}`
+  },
+  predictit: {
+    name: 'PredictIt',
+    color: 'bg-red-500', 
+    baseUrl: 'https://www.predictit.org',
+    getUrl: (title) => `https://www.predictit.org/markets`
+  },
+  manifold: {
+    name: 'Manifold',
+    color: 'bg-yellow-500',
+    baseUrl: 'https://manifold.markets',
+    getUrl: (title) => `https://manifold.markets/search?q=${encodeURIComponent(title.substring(0, 50))}`
+  },
+  azuro: {
+    name: 'Azuro',
+    color: 'bg-green-500',
+    baseUrl: 'https://azuro.org',
+    getUrl: () => `https://azuro.org`
+  },
+  pancakeswap: {
+    name: 'PancakeSwap',
+    color: 'bg-yellow-600',
+    baseUrl: 'https://pancakeswap.finance/prediction',
+    getUrl: () => `https://pancakeswap.finance/prediction`
+  },
+  thales: {
+    name: 'Thales',
+    color: 'bg-violet-500',
+    baseUrl: 'https://thalesmarket.io',
+    getUrl: () => `https://thalesmarket.io`
+  },
+  divvybet: {
+    name: 'DivvyBet',
+    color: 'bg-orange-500',
+    baseUrl: 'https://divvy.bet',
+    getUrl: () => `https://divvy.bet`
+  },
+  metaculus: {
+    name: 'Metaculus',
+    color: 'bg-indigo-500',
+    baseUrl: 'https://www.metaculus.com',
+    getUrl: (title) => `https://www.metaculus.com/questions/?search=${encodeURIComponent(title.substring(0, 50))}`
+  }
+};
+
+const getDefaultPlatformConfig = (platform: string) => ({
+  name: platform.charAt(0).toUpperCase() + platform.slice(1),
+  color: 'bg-gray-500',
+  baseUrl: '#',
+  getUrl: () => '#'
+});
 
 const EventDetailPage = () => {
   const { id } = useParams();
   const navigate = useNavigate();
 
-  // Fetch spread details by spread id
   const { data: spreadData, isLoading } = useQuery({
     queryKey: ["spread-detail", id],
     queryFn: async () => {
-      // First try to find spread by ID directly
-      const { data: spread, error } = await supabase
+      const { data: spread } = await supabase
         .from("spreads")
         .select(`
           *,
@@ -27,25 +95,27 @@ const EventDetailPage = () => {
         .maybeSingle();
 
       if (spread) {
-        // Get prices for this market
         const marketId = spread.market_id;
-        const { data: prices } = await supabase
+        
+        // Get prices for buy platform
+        const { data: buyPrices } = await supabase
           .from("prices")
           .select("*")
           .eq("market_id", marketId)
+          .eq("platform", spread.buy_platform)
           .order("recorded_at", { ascending: false })
           .limit(10);
 
-        // Get mapping to find the matched market
+        // Get mapping to find matched market
         const { data: mapping } = await supabase
           .from("market_mappings")
-          .select("market_id_platform1, market_id_platform2")
+          .select("market_id_platform1, market_id_platform2, platform1, platform2")
           .or(`market_id_platform1.eq.${marketId},market_id_platform2.eq.${marketId}`)
           .limit(1)
           .maybeSingle();
 
         let otherMarket = null;
-        let otherPrices: any[] = [];
+        let sellPrices: any[] = [];
         
         if (mapping) {
           const otherMarketId = mapping.market_id_platform1 === marketId 
@@ -61,26 +131,29 @@ const EventDetailPage = () => {
           otherMarket = other;
 
           if (otherMarketId) {
-            const { data: op } = await supabase
+            const { data: sp } = await supabase
               .from("prices")
               .select("*")
               .eq("market_id", otherMarketId)
+              .eq("platform", spread.sell_platform)
               .order("recorded_at", { ascending: false })
               .limit(10);
-            otherPrices = op || [];
+            sellPrices = sp || [];
           }
         }
 
         return {
           spread,
           market: Array.isArray(spread.market) ? spread.market[0] : spread.market,
-          prices: prices || [],
+          buyPrices: buyPrices || [],
+          sellPrices,
           otherMarket,
-          otherPrices
+          buyPlatform: spread.buy_platform,
+          sellPlatform: spread.sell_platform
         };
       }
 
-      // Fallback: try to find by slug
+      // Fallback: find by slug
       const { data: marketData } = await supabase
         .from("markets")
         .select("*")
@@ -97,10 +170,12 @@ const EventDetailPage = () => {
 
         return {
           market: marketData,
-          prices: prices || [],
+          buyPrices: prices || [],
+          sellPrices: [],
           spread: null,
           otherMarket: null,
-          otherPrices: []
+          buyPlatform: marketData.platform,
+          sellPlatform: null
         };
       }
 
@@ -109,27 +184,14 @@ const EventDetailPage = () => {
     enabled: !!id
   });
 
-  // Generate chart data from real prices
   const generateChartData = () => {
-    if (!spreadData?.prices) return [];
+    if (!spreadData?.buyPrices) return [];
     
-    return spreadData.prices.slice().reverse().map((p: any, i: number) => ({
+    return spreadData.buyPrices.slice().reverse().map((p: any, i: number) => ({
       time: `${i}`,
       price: Number(p.yes_price),
       platform: p.platform
     }));
-  };
-
-  const getPolymarketUrl = (title: string) => {
-    // Create search URL for Polymarket
-    const searchQuery = encodeURIComponent(title.substring(0, 50));
-    return `https://polymarket.com/search?query=${searchQuery}`;
-  };
-
-  const getKalshiUrl = (title: string) => {
-    // Create search URL for Kalshi
-    const searchQuery = encodeURIComponent(title.substring(0, 50));
-    return `https://kalshi.com/search?query=${searchQuery}`;
   };
 
   if (isLoading) {
@@ -166,19 +228,25 @@ const EventDetailPage = () => {
 
   const market = spreadData.market;
   const spread = spreadData.spread;
-  const prices = spreadData.prices || [];
   const otherMarket = spreadData.otherMarket;
-  const otherPrices = spreadData.otherPrices || [];
+  const buyPlatform = spreadData.buyPlatform || market?.platform || 'unknown';
+  const sellPlatform = spreadData.sellPlatform || 'unknown';
+  
+  const buyConfig = PLATFORM_CONFIG[buyPlatform] || getDefaultPlatformConfig(buyPlatform);
+  const sellConfig = PLATFORM_CONFIG[sellPlatform] || getDefaultPlatformConfig(sellPlatform);
 
-  // Get latest prices
-  const latestPrice = prices[0];
-  const latestOtherPrice = otherPrices[0];
+  const latestBuyPrice = spreadData.buyPrices?.[0];
+  const latestSellPrice = spreadData.sellPrices?.[0];
 
-  const buyPrice = spread?.buy_price || latestPrice?.yes_price || 0;
-  const sellPrice = spread?.sell_price || latestOtherPrice?.yes_price || 0;
+  const buyPrice = spread?.buy_price || latestBuyPrice?.yes_price || 0;
+  const sellPrice = spread?.sell_price || latestSellPrice?.yes_price || 0;
   const skewPercentage = spread?.skew_percentage || 0;
 
   const chartData = generateChartData();
+  
+  // Determine which market title to use for each platform
+  const buyMarketTitle = market?.title || '';
+  const sellMarketTitle = otherMarket?.title || market?.title || '';
 
   return (
     <div className="flex h-screen w-full flex-col overflow-hidden bg-background">
@@ -203,8 +271,10 @@ const EventDetailPage = () => {
                 {market?.title || "Unknown Market"}
               </span>
               {skewPercentage > 0 && (
-                <Badge variant="outline" className="border-accent/50 text-accent font-mono text-[8px] px-1 py-0">
-                  +{Number(skewPercentage).toFixed(1)}% SKEW
+                <Badge variant="outline" className={`border-accent/50 font-mono text-[8px] px-1 py-0 ${
+                  skewPercentage > 100 ? 'text-yellow-500 border-yellow-500/50' : 'text-accent'
+                }`}>
+                  {skewPercentage > 100 ? '⚠️' : ''} +{Number(skewPercentage).toFixed(1)}% SKEW
                 </Badge>
               )}
             </div>
@@ -231,7 +301,7 @@ const EventDetailPage = () => {
               <div className="flex-1 border-b border-border/50 p-2">
                 <div className="mb-1 flex items-center justify-between">
                   <span className="font-sans text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-                    Price History
+                    Price History ({buyConfig.name})
                   </span>
                 </div>
                 {chartData.length > 0 ? (
@@ -252,20 +322,26 @@ const EventDetailPage = () => {
               {/* Market Info */}
               <div className="h-[35%] p-2 overflow-auto">
                 <span className="font-sans text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-                  Market Details
+                  Matched Markets
                 </span>
                 <div className="mt-2 space-y-2">
                   <div className="rounded-sm border border-border/50 bg-secondary/30 p-2">
-                    <span className="font-mono text-[9px] text-muted-foreground">KALSHI MARKET</span>
-                    <p className="font-mono text-[11px] text-foreground mt-1">
-                      {market?.title}
+                    <div className="flex items-center gap-1.5 mb-1">
+                      <span className={`w-2 h-2 rounded-full ${buyConfig.color}`} />
+                      <span className="font-mono text-[9px] text-muted-foreground uppercase">{buyConfig.name} (BUY)</span>
+                    </div>
+                    <p className="font-mono text-[11px] text-foreground">
+                      {buyMarketTitle}
                     </p>
                   </div>
-                  {otherMarket && (
+                  {sellPlatform && sellPlatform !== 'unknown' && (
                     <div className="rounded-sm border border-border/50 bg-secondary/30 p-2">
-                      <span className="font-mono text-[9px] text-muted-foreground">POLYMARKET MATCH</span>
-                      <p className="font-mono text-[11px] text-foreground mt-1">
-                        {otherMarket.title}
+                      <div className="flex items-center gap-1.5 mb-1">
+                        <span className={`w-2 h-2 rounded-full ${sellConfig.color}`} />
+                        <span className="font-mono text-[9px] text-muted-foreground uppercase">{sellConfig.name} (SELL)</span>
+                      </div>
+                      <p className="font-mono text-[11px] text-foreground">
+                        {sellMarketTitle}
                       </p>
                     </div>
                   )}
@@ -275,6 +351,19 @@ const EventDetailPage = () => {
 
             {/* Right: Data Panels (40%) */}
             <div className="flex w-[40%] flex-col">
+              {/* Warning for high skew */}
+              {skewPercentage > 100 && (
+                <div className="border-b border-yellow-500/30 bg-yellow-500/10 p-2">
+                  <div className="flex items-center gap-2 text-yellow-500">
+                    <AlertTriangle className="h-4 w-4" />
+                    <span className="font-mono text-[10px] font-bold">HIGH SKEW WARNING</span>
+                  </div>
+                  <p className="font-mono text-[9px] text-yellow-500/80 mt-1">
+                    {skewPercentage}% skew is unusually high. This may indicate different events were matched incorrectly.
+                  </p>
+                </div>
+              )}
+
               {/* Price Comparison */}
               <div className="border-b border-border/50 p-2">
                 <span className="font-sans text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
@@ -282,26 +371,28 @@ const EventDetailPage = () => {
                 </span>
                 <div className="mt-2 grid grid-cols-2 gap-2">
                   <div className="rounded-sm border border-border/50 bg-secondary/30 p-2">
-                    <span className="font-mono text-[9px] text-muted-foreground">KALSHI (YES)</span>
-                    <div className="mt-1 flex items-center gap-1">
-                      <span className="font-mono text-lg font-bold text-foreground">
-                        ${Number(latestPrice?.yes_price || 0).toFixed(2)}
-                      </span>
+                    <div className="flex items-center gap-1">
+                      <span className={`w-1.5 h-1.5 rounded-full ${buyConfig.color}`} />
+                      <span className="font-mono text-[9px] text-muted-foreground uppercase">{buyConfig.name}</span>
                     </div>
-                    <span className="font-mono text-[8px] text-muted-foreground">
-                      NO: ${Number(latestPrice?.no_price || 0).toFixed(2)}
-                    </span>
+                    <div className="mt-1 flex items-center gap-1">
+                      <span className="font-mono text-lg font-bold text-accent">
+                        ${Number(buyPrice).toFixed(2)}
+                      </span>
+                      <span className="font-mono text-[8px] text-accent">BUY</span>
+                    </div>
                   </div>
                   <div className="rounded-sm border border-border/50 bg-secondary/30 p-2">
-                    <span className="font-mono text-[9px] text-muted-foreground">POLYMARKET (YES)</span>
-                    <div className="mt-1 flex items-center gap-1">
-                      <span className="font-mono text-lg font-bold text-foreground">
-                        ${Number(latestOtherPrice?.yes_price || 0).toFixed(2)}
-                      </span>
+                    <div className="flex items-center gap-1">
+                      <span className={`w-1.5 h-1.5 rounded-full ${sellConfig.color}`} />
+                      <span className="font-mono text-[9px] text-muted-foreground uppercase">{sellConfig.name}</span>
                     </div>
-                    <span className="font-mono text-[8px] text-muted-foreground">
-                      NO: ${Number(latestOtherPrice?.no_price || 0).toFixed(2)}
-                    </span>
+                    <div className="mt-1 flex items-center gap-1">
+                      <span className="font-mono text-lg font-bold text-primary">
+                        ${Number(sellPrice).toFixed(2)}
+                      </span>
+                      <span className="font-mono text-[8px] text-primary">SELL</span>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -314,14 +405,22 @@ const EventDetailPage = () => {
                 <div className="mt-2 rounded-sm bg-accent/10 border border-accent/30 p-2">
                   <div className="flex items-center justify-between">
                     <span className="font-mono text-[10px] text-muted-foreground">SKEW</span>
-                    <span className={`font-mono text-xl font-bold ${skewPercentage > 5 ? 'text-accent' : 'text-foreground'}`}>
+                    <span className={`font-mono text-xl font-bold ${
+                      skewPercentage > 100 ? 'text-yellow-500' : skewPercentage > 5 ? 'text-accent' : 'text-foreground'
+                    }`}>
                       {skewPercentage > 0 ? `+${Number(skewPercentage).toFixed(1)}%` : 'N/A'}
                     </span>
                   </div>
                   {spread && (
                     <div className="mt-2 text-[10px] font-mono text-muted-foreground">
-                      <div>Buy @ ${Number(buyPrice).toFixed(2)} ({spread.buy_platform})</div>
-                      <div>Sell @ ${Number(sellPrice).toFixed(2)} ({spread.sell_platform})</div>
+                      <div className="flex items-center gap-1">
+                        <span className={`w-1.5 h-1.5 rounded-full ${buyConfig.color}`} />
+                        Buy @ ${Number(buyPrice).toFixed(2)} on {buyConfig.name}
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <span className={`w-1.5 h-1.5 rounded-full ${sellConfig.color}`} />
+                        Sell @ ${Number(sellPrice).toFixed(2)} on {sellConfig.name}
+                      </div>
                       <div className="text-accent mt-1">
                         Potential profit: ${Number(spread.potential_profit || 0).toFixed(2)} per $100
                       </div>
@@ -330,78 +429,72 @@ const EventDetailPage = () => {
                 </div>
               </div>
 
-              {/* Action Buttons - KALSHI */}
+              {/* Action Buttons - BUY Platform */}
               <div className="border-b border-border/50 p-2">
-                <span className="font-sans text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-                  Trade on Kalshi
-                </span>
-                <div className="mt-2 flex gap-2">
+                <div className="flex items-center gap-1.5 mb-2">
+                  <span className={`w-2 h-2 rounded-full ${buyConfig.color}`} />
+                  <span className="font-sans text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                    Buy on {buyConfig.name}
+                  </span>
+                </div>
+                <div className="flex gap-2">
                   <Button 
                     className="flex-1 h-8 bg-accent hover:bg-accent/80 text-accent-foreground font-mono text-[10px]"
-                    onClick={() => window.open(getKalshiUrl(market?.title || ''), '_blank')}
+                    onClick={() => window.open(buyConfig.getUrl(buyMarketTitle), '_blank')}
                   >
                     <ExternalLink className="h-3 w-3 mr-1" />
-                    BUY YES
-                  </Button>
-                  <Button 
-                    className="flex-1 h-8 bg-primary hover:bg-primary/80 text-primary-foreground font-mono text-[10px]"
-                    onClick={() => window.open(getKalshiUrl(market?.title || ''), '_blank')}
-                  >
-                    <ExternalLink className="h-3 w-3 mr-1" />
-                    BUY NO
+                    BUY YES @ ${Number(buyPrice).toFixed(2)}
                   </Button>
                 </div>
                 <a 
-                  href="https://kalshi.com" 
+                  href={buyConfig.baseUrl}
                   target="_blank" 
                   rel="noopener noreferrer"
                   className="block mt-1 font-mono text-[9px] text-muted-foreground hover:text-foreground underline"
                 >
-                  Open Kalshi →
+                  Open {buyConfig.name} →
                 </a>
               </div>
 
-              {/* Action Buttons - POLYMARKET */}
-              <div className="border-b border-border/50 p-2">
-                <span className="font-sans text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-                  Trade on Polymarket
-                </span>
-                <div className="mt-2 flex gap-2">
-                  <Button 
-                    className="flex-1 h-8 bg-accent hover:bg-accent/80 text-accent-foreground font-mono text-[10px]"
-                    onClick={() => window.open(getPolymarketUrl(otherMarket?.title || market?.title || ''), '_blank')}
+              {/* Action Buttons - SELL Platform */}
+              {sellPlatform && sellPlatform !== 'unknown' && (
+                <div className="border-b border-border/50 p-2">
+                  <div className="flex items-center gap-1.5 mb-2">
+                    <span className={`w-2 h-2 rounded-full ${sellConfig.color}`} />
+                    <span className="font-sans text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                      Sell on {sellConfig.name}
+                    </span>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button 
+                      className="flex-1 h-8 bg-primary hover:bg-primary/80 text-primary-foreground font-mono text-[10px]"
+                      onClick={() => window.open(sellConfig.getUrl(sellMarketTitle), '_blank')}
+                    >
+                      <ExternalLink className="h-3 w-3 mr-1" />
+                      SELL YES @ ${Number(sellPrice).toFixed(2)}
+                    </Button>
+                  </div>
+                  <a 
+                    href={sellConfig.baseUrl}
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="block mt-1 font-mono text-[9px] text-muted-foreground hover:text-foreground underline"
                   >
-                    <ExternalLink className="h-3 w-3 mr-1" />
-                    BUY YES
-                  </Button>
-                  <Button 
-                    className="flex-1 h-8 bg-primary hover:bg-primary/80 text-primary-foreground font-mono text-[10px]"
-                    onClick={() => window.open(getPolymarketUrl(otherMarket?.title || market?.title || ''), '_blank')}
-                  >
-                    <ExternalLink className="h-3 w-3 mr-1" />
-                    BUY NO
-                  </Button>
+                    Open {sellConfig.name} →
+                  </a>
                 </div>
-                <a 
-                  href="https://polymarket.com" 
-                  target="_blank" 
-                  rel="noopener noreferrer"
-                  className="block mt-1 font-mono text-[9px] text-muted-foreground hover:text-foreground underline"
-                >
-                  Open Polymarket →
-                </a>
-              </div>
+              )}
 
-              {/* Spread Info */}
+              {/* Verification */}
               <div className="flex-1 overflow-auto p-2">
                 <span className="font-sans text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
                   Verification
                 </span>
                 <div className="mt-2 space-y-2 text-[10px] font-mono text-muted-foreground">
                   <p>⚠️ Verify prices manually on both platforms before trading.</p>
-                  <p>• High skew percentages may indicate different events, not arbitrage.</p>
-                  <p>• Always check event descriptions match before executing trades.</p>
-                  <p>• Consider fees and slippage in your calculations.</p>
+                  <p>• High skew (&gt;100%) usually means different events, not arbitrage.</p>
+                  <p>• Compare event descriptions carefully.</p>
+                  <p>• Account for fees, slippage, and timing differences.</p>
                 </div>
               </div>
             </div>
