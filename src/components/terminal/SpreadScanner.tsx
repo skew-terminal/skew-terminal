@@ -1,10 +1,12 @@
 import { useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
 import { Bitcoin, TrendingUp, Vote, Flame, Zap, ArrowUpDown, Loader2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Area, AreaChart, ResponsiveContainer } from "recharts";
 import { useSpreads, Spread } from "@/hooks/useSpreads";
+import { supabase } from "@/integrations/supabase/client";
 
 interface DisplayOpportunity {
   id: string;
@@ -33,6 +35,27 @@ const categoryIcons: Record<string, typeof Bitcoin> = {
 
 const categories = ["all", "crypto", "politics", "economics", "sports"] as const;
 
+const PLATFORMS = [
+  "all",
+  "kalshi",
+  "polymarket",
+  "azuro",
+  "pancakeswap",
+  "opinions",
+  "probable",
+  "divvybet"
+] as const;
+
+const PLATFORM_COLORS: Record<string, string> = {
+  kalshi: "bg-blue-500",
+  polymarket: "bg-purple-500",
+  azuro: "bg-green-500",
+  pancakeswap: "bg-yellow-500",
+  opinions: "bg-pink-500",
+  probable: "bg-indigo-500",
+  divvybet: "bg-orange-500",
+};
+
 type SortField = "skew" | "potentialProfit" | "market";
 type SortOrder = "asc" | "desc";
 
@@ -47,10 +70,30 @@ const generateSparkline = (skew: number): number[] => {
 export const SpreadScanner = () => {
   const navigate = useNavigate();
   const [activeCategory, setActiveCategory] = useState<typeof categories[number]>("all");
+  const [selectedPlatform, setSelectedPlatform] = useState<typeof PLATFORMS[number]>("all");
   const [sortField, setSortField] = useState<SortField>("skew");
   const [sortOrder, setSortOrder] = useState<SortOrder>("desc");
 
   const { data: spreads, isLoading, error } = useSpreads({ activeOnly: true });
+
+  // Fetch platform stats
+  const { data: platformStats } = useQuery({
+    queryKey: ["platform-stats"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("markets")
+        .select("platform");
+      
+      if (error) throw error;
+      
+      const stats: Record<string, number> = {};
+      data?.forEach((m) => {
+        stats[m.platform] = (stats[m.platform] || 0) + 1;
+      });
+      return stats;
+    },
+    refetchInterval: 60000,
+  });
 
   // Transform spreads to display format
   const opportunities = useMemo((): DisplayOpportunity[] => {
@@ -100,6 +143,11 @@ export const SpreadScanner = () => {
 
   const filteredOpportunities = opportunities
     .filter(opp => activeCategory === "all" || opp.category === activeCategory)
+    .filter(opp => 
+      selectedPlatform === "all" || 
+      opp.buyPlatform === selectedPlatform || 
+      opp.sellPlatform === selectedPlatform
+    )
     .sort((a, b) => {
       const multiplier = sortOrder === "desc" ? -1 : 1;
       if (sortField === "market") return multiplier * a.market.localeCompare(b.market);
@@ -114,8 +162,30 @@ export const SpreadScanner = () => {
     );
   }
 
+  const totalMarkets = Object.values(platformStats || {}).reduce((a, b) => a + b, 0);
+
   return (
     <div className="flex h-full flex-col">
+      {/* Platform Stats Header */}
+      {platformStats && Object.keys(platformStats).length > 0 && (
+        <div className="grid grid-cols-4 sm:grid-cols-6 lg:grid-cols-8 gap-1 px-3 py-2 border-b border-border bg-secondary/20">
+          <div className="bg-secondary/50 p-1.5 rounded text-center">
+            <div className="text-sm font-bold text-foreground font-mono">{totalMarkets}</div>
+            <div className="text-[8px] text-muted-foreground uppercase">Total</div>
+          </div>
+          {Object.entries(platformStats).map(([platform, count]) => (
+            <div 
+              key={platform} 
+              className="bg-secondary/50 p-1.5 rounded text-center cursor-pointer hover:bg-secondary/80 transition-colors"
+              onClick={() => setSelectedPlatform(platform as typeof PLATFORMS[number])}
+            >
+              <div className="text-sm font-bold text-foreground font-mono">{count}</div>
+              <div className="text-[8px] text-muted-foreground uppercase truncate">{platform}</div>
+            </div>
+          ))}
+        </div>
+      )}
+
       {/* Header */}
       <div className="flex items-center justify-between border-b border-border px-3 py-1.5">
         <div className="flex items-center gap-2">
@@ -146,6 +216,26 @@ export const SpreadScanner = () => {
             </Button>
           ))}
         </div>
+      </div>
+
+      {/* Platform Filters */}
+      <div className="flex gap-1.5 px-3 py-2 border-b border-border flex-wrap">
+        {PLATFORMS.map(platform => (
+          <button
+            key={platform}
+            onClick={() => setSelectedPlatform(platform)}
+            className={`px-2 py-0.5 rounded text-[9px] font-mono uppercase transition-colors ${
+              selectedPlatform === platform 
+                ? "bg-accent text-accent-foreground" 
+                : "bg-secondary text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            {platform}
+            {platform !== "all" && PLATFORM_COLORS[platform] && (
+              <span className={`inline-block w-1.5 h-1.5 rounded-full ml-1 ${PLATFORM_COLORS[platform]}`} />
+            )}
+          </button>
+        ))}
       </div>
 
       {/* Table Header */}
@@ -187,7 +277,12 @@ export const SpreadScanner = () => {
           <div className="flex h-full flex-col items-center justify-center gap-2 text-muted-foreground">
             <Zap className="h-8 w-8 opacity-20" />
             <span className="font-mono text-xs">No arbitrage opportunities found</span>
-            <span className="font-mono text-[10px] opacity-60">Run fetch functions to populate data</span>
+            <span className="font-mono text-[10px] opacity-60">
+              {totalMarkets > 0 
+                ? `${totalMarkets} markets loaded, waiting for matching spreads`
+                : "Run fetch functions to populate data"
+              }
+            </span>
           </div>
         ) : (
           filteredOpportunities.map((opp, index) => {
@@ -245,7 +340,10 @@ export const SpreadScanner = () => {
                   <span className="font-mono text-[11px] text-foreground">
                     {formatPrice(opp.buyPrice)}
                   </span>
-                  <span className="font-mono text-[8px] text-muted-foreground uppercase">
+                  <span className="flex items-center gap-0.5 font-mono text-[8px] text-muted-foreground uppercase">
+                    {PLATFORM_COLORS[opp.buyPlatform] && (
+                      <span className={`inline-block w-1.5 h-1.5 rounded-full ${PLATFORM_COLORS[opp.buyPlatform]}`} />
+                    )}
                     {opp.buyPlatform}
                   </span>
                 </div>
@@ -255,7 +353,10 @@ export const SpreadScanner = () => {
                   <span className="font-mono text-[11px] text-foreground">
                     {formatPrice(opp.sellPrice)}
                   </span>
-                  <span className="font-mono text-[8px] text-muted-foreground uppercase">
+                  <span className="flex items-center gap-0.5 font-mono text-[8px] text-muted-foreground uppercase">
+                    {PLATFORM_COLORS[opp.sellPlatform] && (
+                      <span className={`inline-block w-1.5 h-1.5 rounded-full ${PLATFORM_COLORS[opp.sellPlatform]}`} />
+                    )}
                     {opp.sellPlatform}
                   </span>
                 </div>
