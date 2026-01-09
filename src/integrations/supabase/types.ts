@@ -21,6 +21,8 @@ export type Database = {
           manual_verified: boolean | null
           market_a_id: string
           market_b_id: string
+          platform1: string | null
+          platform2: string | null
           similarity_score: number
           updated_at: string | null
         }
@@ -30,6 +32,8 @@ export type Database = {
           manual_verified?: boolean | null
           market_a_id: string
           market_b_id: string
+          platform1?: string | null
+          platform2?: string | null
           similarity_score: number
           updated_at?: string | null
         }
@@ -39,6 +43,8 @@ export type Database = {
           manual_verified?: boolean | null
           market_a_id?: string
           market_b_id?: string
+          platform1?: string | null
+          platform2?: string | null
           similarity_score?: number
           updated_at?: string | null
         }
