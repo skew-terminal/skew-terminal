@@ -1,11 +1,11 @@
 import { useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { Bitcoin, TrendingUp, Vote, Flame, Zap, ArrowUpDown, Loader2 } from "lucide-react";
+import { Bitcoin, TrendingUp, Vote, Flame, Zap, ArrowUpDown, Loader2, Globe, Link2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Area, AreaChart, ResponsiveContainer } from "recharts";
-import { useSpreads, Spread } from "@/hooks/useSpreads";
+import { useSpreads } from "@/hooks/useSpreads";
 import { supabase } from "@/integrations/supabase/client";
 
 interface DisplayOpportunity {
@@ -24,6 +24,40 @@ interface DisplayOpportunity {
   sparkline: number[];
 }
 
+interface Platform {
+  id: string;
+  name: string;
+  color: string;
+  chain: string;
+  chainColor: string;
+}
+
+const ALL_PLATFORMS: Platform[] = [
+  { id: 'kalshi', name: 'Kalshi', color: 'bg-blue-500', chain: 'USA', chainColor: 'text-blue-400' },
+  { id: 'polymarket', name: 'Polymarket', color: 'bg-purple-500', chain: 'Polygon', chainColor: 'text-purple-400' },
+  { id: 'azuro', name: 'Azuro', color: 'bg-green-500', chain: 'Multi', chainColor: 'text-green-400' },
+  { id: 'predictit', name: 'PredictIt', color: 'bg-red-500', chain: 'USA', chainColor: 'text-red-400' },
+  { id: 'manifold', name: 'Manifold', color: 'bg-yellow-500', chain: 'Web2', chainColor: 'text-yellow-400' },
+  { id: 'metaculus', name: 'Metaculus', color: 'bg-indigo-500', chain: 'Web2', chainColor: 'text-indigo-400' },
+  { id: 'futuur', name: 'Futuur', color: 'bg-pink-500', chain: 'Polygon', chainColor: 'text-pink-400' },
+  { id: 'divvybet', name: 'DivvyBet', color: 'bg-orange-500', chain: 'Solana', chainColor: 'text-orange-400' },
+  { id: 'betdex', name: 'BetDEX', color: 'bg-teal-500', chain: 'Solana', chainColor: 'text-teal-400' },
+  { id: 'monaco', name: 'Monaco', color: 'bg-cyan-500', chain: 'Solana', chainColor: 'text-cyan-400' },
+  { id: 'opinions', name: 'Opinions', color: 'bg-amber-500', chain: 'BSC', chainColor: 'text-amber-400' },
+  { id: 'pancakeswap', name: 'PancakeSwap', color: 'bg-yellow-600', chain: 'BSC', chainColor: 'text-yellow-500' },
+  { id: 'probable', name: 'Probable', color: 'bg-lime-500', chain: 'BSC', chainColor: 'text-lime-400' },
+  { id: 'thales', name: 'Thales', color: 'bg-violet-500', chain: 'Arbitrum', chainColor: 'text-violet-400' },
+  { id: 'limitless', name: 'Limitless', color: 'bg-sky-500', chain: 'Base', chainColor: 'text-sky-400' },
+  { id: 'myriad', name: 'Myriad', color: 'bg-rose-500', chain: 'Base', chainColor: 'text-rose-400' },
+  { id: 'omen', name: 'Omen', color: 'bg-emerald-500', chain: 'Gnosis', chainColor: 'text-emerald-400' },
+  { id: 'augur', name: 'Augur', color: 'bg-slate-400', chain: 'Ethereum', chainColor: 'text-slate-300' },
+  { id: 'zeitgeist', name: 'Zeitgeist', color: 'bg-fuchsia-500', chain: 'Polkadot', chainColor: 'text-fuchsia-400' },
+];
+
+const PLATFORM_MAP = ALL_PLATFORMS.reduce((acc, p) => ({ ...acc, [p.id]: p }), {} as Record<string, Platform>);
+
+const CHAINS = ['All', 'USA', 'Polygon', 'Solana', 'BSC', 'Base', 'Arbitrum', 'Ethereum', 'Gnosis', 'Polkadot', 'Web2', 'Multi'];
+
 const categoryIcons: Record<string, typeof Bitcoin> = {
   crypto: Bitcoin,
   politics: Vote,
@@ -35,31 +69,9 @@ const categoryIcons: Record<string, typeof Bitcoin> = {
 
 const categories = ["all", "crypto", "politics", "economics", "sports"] as const;
 
-const PLATFORMS = [
-  "all",
-  "kalshi",
-  "polymarket",
-  "azuro",
-  "pancakeswap",
-  "opinions",
-  "probable",
-  "divvybet"
-] as const;
-
-const PLATFORM_COLORS: Record<string, string> = {
-  kalshi: "bg-blue-500",
-  polymarket: "bg-purple-500",
-  azuro: "bg-green-500",
-  pancakeswap: "bg-yellow-500",
-  opinions: "bg-pink-500",
-  probable: "bg-indigo-500",
-  divvybet: "bg-orange-500",
-};
-
 type SortField = "skew" | "potentialProfit" | "market";
 type SortOrder = "asc" | "desc";
 
-// Generate fake sparkline for now (until we have historical data)
 const generateSparkline = (skew: number): number[] => {
   const base = 50;
   return Array.from({ length: 8 }, (_, i) => 
@@ -70,13 +82,13 @@ const generateSparkline = (skew: number): number[] => {
 export const SpreadScanner = () => {
   const navigate = useNavigate();
   const [activeCategory, setActiveCategory] = useState<typeof categories[number]>("all");
-  const [selectedPlatform, setSelectedPlatform] = useState<typeof PLATFORMS[number]>("all");
+  const [selectedPlatform, setSelectedPlatform] = useState<string>("all");
+  const [selectedChain, setSelectedChain] = useState<string>("All");
   const [sortField, setSortField] = useState<SortField>("skew");
   const [sortOrder, setSortOrder] = useState<SortOrder>("desc");
 
   const { data: spreads, isLoading, error } = useSpreads({ activeOnly: true });
 
-  // Fetch platform stats
   const { data: platformStats } = useQuery({
     queryKey: ["platform-stats"],
     queryFn: async () => {
@@ -95,7 +107,6 @@ export const SpreadScanner = () => {
     refetchInterval: 60000,
   });
 
-  // Transform spreads to display format
   const opportunities = useMemo((): DisplayOpportunity[] => {
     if (!spreads) return [];
 
@@ -111,7 +122,7 @@ export const SpreadScanner = () => {
       skew: Number(spread.skew_percentage),
       potentialProfit: Number(spread.potential_profit) || 0,
       status: spread.skew_percentage > 5 ? "arb_open" : "converging",
-      isNew: new Date(spread.detected_at).getTime() > Date.now() - 5 * 60 * 1000, // Last 5 min
+      isNew: new Date(spread.detected_at).getTime() > Date.now() - 5 * 60 * 1000,
       sparkline: generateSparkline(Number(spread.skew_percentage)),
     }));
   }, [spreads]);
@@ -141,13 +152,22 @@ export const SpreadScanner = () => {
     }
   };
 
+  const getPlatformByChain = (chain: string) => {
+    return ALL_PLATFORMS.filter(p => p.chain === chain);
+  };
+
   const filteredOpportunities = opportunities
     .filter(opp => activeCategory === "all" || opp.category === activeCategory)
-    .filter(opp => 
-      selectedPlatform === "all" || 
-      opp.buyPlatform === selectedPlatform || 
-      opp.sellPlatform === selectedPlatform
-    )
+    .filter(opp => {
+      if (selectedPlatform !== "all") {
+        return opp.buyPlatform === selectedPlatform || opp.sellPlatform === selectedPlatform;
+      }
+      if (selectedChain !== "All") {
+        const chainPlatforms = getPlatformByChain(selectedChain).map(p => p.id);
+        return chainPlatforms.includes(opp.buyPlatform) || chainPlatforms.includes(opp.sellPlatform);
+      }
+      return true;
+    })
     .sort((a, b) => {
       const multiplier = sortOrder === "desc" ? -1 : 1;
       if (sortField === "market") return multiplier * a.market.localeCompare(b.market);
@@ -163,31 +183,73 @@ export const SpreadScanner = () => {
   }
 
   const totalMarkets = Object.values(platformStats || {}).reduce((a, b) => a + b, 0);
+  const activePlatforms = Object.keys(platformStats || {}).length;
 
   return (
     <div className="flex h-full flex-col">
-      {/* Platform Stats Header */}
-      {platformStats && Object.keys(platformStats).length > 0 && (
-        <div className="grid grid-cols-4 sm:grid-cols-6 lg:grid-cols-8 gap-1 px-3 py-2 border-b border-border bg-secondary/20">
-          <div className="bg-secondary/50 p-1.5 rounded text-center">
-            <div className="text-sm font-bold text-foreground font-mono">{totalMarkets}</div>
-            <div className="text-[8px] text-muted-foreground uppercase">Total</div>
+      {/* Platform Stats Grid - Bloomberg Style */}
+      <div className="border-b border-border bg-background/50">
+        <div className="flex items-center justify-between px-3 py-1.5 border-b border-border/50">
+          <div className="flex items-center gap-2">
+            <Globe className="h-3 w-3 text-primary" />
+            <span className="font-sans text-[9px] font-bold uppercase tracking-wider text-muted-foreground">
+              Platform Coverage
+            </span>
           </div>
-          {Object.entries(platformStats).map(([platform, count]) => (
-            <div 
-              key={platform} 
-              className="bg-secondary/50 p-1.5 rounded text-center cursor-pointer hover:bg-secondary/80 transition-colors"
-              onClick={() => setSelectedPlatform(platform as typeof PLATFORMS[number])}
-            >
-              <div className="text-sm font-bold text-foreground font-mono">{count}</div>
-              <div className="text-[8px] text-muted-foreground uppercase truncate">{platform}</div>
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-1">
+              <span className="font-mono text-xs text-accent font-bold">{activePlatforms}</span>
+              <span className="text-[8px] text-muted-foreground uppercase">Active</span>
             </div>
-          ))}
+            <div className="flex items-center gap-1">
+              <span className="font-mono text-xs text-foreground font-bold">{totalMarkets}</span>
+              <span className="text-[8px] text-muted-foreground uppercase">Markets</span>
+            </div>
+          </div>
         </div>
-      )}
+        
+        <div className="grid grid-cols-5 sm:grid-cols-7 lg:grid-cols-10 gap-0.5 p-1.5">
+          {ALL_PLATFORMS.map(platform => {
+            const count = platformStats?.[platform.id] || 0;
+            const isActive = count > 0;
+            const isSelected = selectedPlatform === platform.id;
+            
+            return (
+              <button
+                key={platform.id}
+                onClick={() => setSelectedPlatform(isSelected ? "all" : platform.id)}
+                className={`relative p-1.5 rounded transition-all ${
+                  isSelected 
+                    ? "bg-primary/20 ring-1 ring-primary/50" 
+                    : isActive 
+                    ? "bg-secondary/60 hover:bg-secondary" 
+                    : "bg-secondary/20 opacity-50"
+                }`}
+              >
+                <div className="flex items-center gap-1 mb-0.5">
+                  <span className={`w-1.5 h-1.5 rounded-full ${platform.color} ${isActive ? '' : 'opacity-30'}`} />
+                  <span className={`font-mono text-[8px] uppercase truncate ${
+                    isActive ? "text-foreground" : "text-muted-foreground"
+                  }`}>
+                    {platform.name}
+                  </span>
+                </div>
+                <div className={`font-mono text-sm font-bold ${
+                  isActive ? "text-accent" : "text-muted-foreground/50"
+                }`}>
+                  {count}
+                </div>
+                <div className={`text-[7px] uppercase ${platform.chainColor} opacity-70`}>
+                  {platform.chain}
+                </div>
+              </button>
+            );
+          })}
+        </div>
+      </div>
 
-      {/* Header */}
-      <div className="flex items-center justify-between border-b border-border px-3 py-1.5">
+      {/* Controls Bar */}
+      <div className="flex items-center justify-between border-b border-border px-3 py-1.5 bg-secondary/20">
         <div className="flex items-center gap-2">
           <Zap className="h-3.5 w-3.5 text-primary" />
           <span className="font-sans text-xs font-bold uppercase tracking-wider text-foreground">
@@ -198,44 +260,43 @@ export const SpreadScanner = () => {
           </Badge>
         </div>
 
-        {/* Category Filters */}
-        <div className="flex items-center gap-1">
-          {categories.map((cat) => (
-            <Button
-              key={cat}
-              variant="ghost"
-              size="sm"
-              onClick={() => setActiveCategory(cat)}
-              className={`h-6 px-2 font-mono text-[9px] uppercase ${
-                activeCategory === cat
-                  ? "bg-primary/20 text-primary"
-                  : "text-muted-foreground hover:text-foreground"
-              }`}
+        <div className="flex items-center gap-3">
+          {/* Chain Filter */}
+          <div className="flex items-center gap-1">
+            <Link2 className="h-3 w-3 text-muted-foreground" />
+            <select
+              value={selectedChain}
+              onChange={(e) => {
+                setSelectedChain(e.target.value);
+                setSelectedPlatform("all");
+              }}
+              className="bg-secondary border-0 text-[9px] font-mono uppercase text-foreground px-1.5 py-0.5 rounded focus:ring-1 focus:ring-primary/50"
             >
-              {cat}
-            </Button>
-          ))}
-        </div>
-      </div>
+              {CHAINS.map(chain => (
+                <option key={chain} value={chain}>{chain}</option>
+              ))}
+            </select>
+          </div>
 
-      {/* Platform Filters */}
-      <div className="flex gap-1.5 px-3 py-2 border-b border-border flex-wrap">
-        {PLATFORMS.map(platform => (
-          <button
-            key={platform}
-            onClick={() => setSelectedPlatform(platform)}
-            className={`px-2 py-0.5 rounded text-[9px] font-mono uppercase transition-colors ${
-              selectedPlatform === platform 
-                ? "bg-accent text-accent-foreground" 
-                : "bg-secondary text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            {platform}
-            {platform !== "all" && PLATFORM_COLORS[platform] && (
-              <span className={`inline-block w-1.5 h-1.5 rounded-full ml-1 ${PLATFORM_COLORS[platform]}`} />
-            )}
-          </button>
-        ))}
+          {/* Category Filters */}
+          <div className="flex items-center gap-0.5">
+            {categories.map((cat) => (
+              <Button
+                key={cat}
+                variant="ghost"
+                size="sm"
+                onClick={() => setActiveCategory(cat)}
+                className={`h-5 px-1.5 font-mono text-[8px] uppercase ${
+                  activeCategory === cat
+                    ? "bg-primary/20 text-primary"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                {cat}
+              </Button>
+            ))}
+          </div>
+        </div>
       </div>
 
       {/* Table Header */}
@@ -279,7 +340,7 @@ export const SpreadScanner = () => {
             <span className="font-mono text-xs">No arbitrage opportunities found</span>
             <span className="font-mono text-[10px] opacity-60">
               {totalMarkets > 0 
-                ? `${totalMarkets} markets loaded, waiting for matching spreads`
+                ? `${totalMarkets} markets across ${activePlatforms} platforms`
                 : "Run fetch functions to populate data"
               }
             </span>
@@ -288,6 +349,8 @@ export const SpreadScanner = () => {
           filteredOpportunities.map((opp, index) => {
             const Icon = categoryIcons[opp.category] || TrendingUp;
             const isHighSkew = opp.skew > 10;
+            const buyPlatform = PLATFORM_MAP[opp.buyPlatform];
+            const sellPlatform = PLATFORM_MAP[opp.sellPlatform];
 
             return (
               <div
@@ -340,12 +403,19 @@ export const SpreadScanner = () => {
                   <span className="font-mono text-[11px] text-foreground">
                     {formatPrice(opp.buyPrice)}
                   </span>
-                  <span className="flex items-center gap-0.5 font-mono text-[8px] text-muted-foreground uppercase">
-                    {PLATFORM_COLORS[opp.buyPlatform] && (
-                      <span className={`inline-block w-1.5 h-1.5 rounded-full ${PLATFORM_COLORS[opp.buyPlatform]}`} />
+                  <div className="flex items-center gap-0.5">
+                    {buyPlatform && (
+                      <span className={`inline-block w-1.5 h-1.5 rounded-full ${buyPlatform.color}`} />
                     )}
-                    {opp.buyPlatform}
-                  </span>
+                    <span className="font-mono text-[7px] text-muted-foreground uppercase">
+                      {opp.buyPlatform}
+                    </span>
+                    {buyPlatform && (
+                      <span className={`text-[6px] ${buyPlatform.chainColor}`}>
+                        {buyPlatform.chain}
+                      </span>
+                    )}
+                  </div>
                 </div>
 
                 {/* Sell Price + Platform */}
@@ -353,12 +423,19 @@ export const SpreadScanner = () => {
                   <span className="font-mono text-[11px] text-foreground">
                     {formatPrice(opp.sellPrice)}
                   </span>
-                  <span className="flex items-center gap-0.5 font-mono text-[8px] text-muted-foreground uppercase">
-                    {PLATFORM_COLORS[opp.sellPlatform] && (
-                      <span className={`inline-block w-1.5 h-1.5 rounded-full ${PLATFORM_COLORS[opp.sellPlatform]}`} />
+                  <div className="flex items-center gap-0.5">
+                    {sellPlatform && (
+                      <span className={`inline-block w-1.5 h-1.5 rounded-full ${sellPlatform.color}`} />
                     )}
-                    {opp.sellPlatform}
-                  </span>
+                    <span className="font-mono text-[7px] text-muted-foreground uppercase">
+                      {opp.sellPlatform}
+                    </span>
+                    {sellPlatform && (
+                      <span className={`text-[6px] ${sellPlatform.chainColor}`}>
+                        {sellPlatform.chain}
+                      </span>
+                    )}
+                  </div>
                 </div>
 
                 {/* Skew */}
