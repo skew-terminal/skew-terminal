@@ -264,15 +264,15 @@ serve(async (req) => {
             const { error } = await supabase
               .from('market_mappings')
               .upsert({
-                market_a_id: m1.id,
-                market_b_id: bestMatch.id,
+                market_id_platform1: m1.id,
+                market_id_platform2: bestMatch.id,
                 platform1: platform1,
                 platform2: platform2,
                 similarity_score: bestScore,
                 manual_verified: false,
                 updated_at: new Date().toISOString()
               }, {
-                onConflict: 'market_a_id,market_b_id'
+                onConflict: 'market_id_platform1,market_id_platform2'
               });
 
             if (!error) {

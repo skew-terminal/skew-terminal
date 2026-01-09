@@ -39,8 +39,8 @@ const EventDetailPage = () => {
         // Get mapping to find the matched market
         const { data: mapping } = await supabase
           .from("market_mappings")
-          .select("market_a_id, market_b_id")
-          .or(`market_a_id.eq.${marketId},market_b_id.eq.${marketId}`)
+          .select("market_id_platform1, market_id_platform2")
+          .or(`market_id_platform1.eq.${marketId},market_id_platform2.eq.${marketId}`)
           .limit(1)
           .maybeSingle();
 
@@ -48,9 +48,9 @@ const EventDetailPage = () => {
         let otherPrices: any[] = [];
         
         if (mapping) {
-          const otherMarketId = mapping.market_a_id === marketId 
-            ? mapping.market_b_id 
-            : mapping.market_a_id;
+          const otherMarketId = mapping.market_id_platform1 === marketId 
+            ? mapping.market_id_platform2 
+            : mapping.market_id_platform1;
 
           const { data: other } = await supabase
             .from("markets")
