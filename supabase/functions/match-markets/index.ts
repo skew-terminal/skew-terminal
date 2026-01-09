@@ -122,8 +122,8 @@ serve(async (req) => {
 
     console.log('Starting AI-powered market matching...');
 
-    // Get all platforms
-    const platforms = ['kalshi', 'polymarket', 'azuro', 'predictit', 'manifold'];
+    // Get all platforms (thales added for sports arb with azuro)
+    const platforms = ['kalshi', 'polymarket', 'azuro', 'predictit', 'manifold', 'thales'];
     const allMarkets: Record<string, any[]> = {};
 
     for (const platform of platforms) {
