@@ -1,0 +1,16 @@
+-- Add new platform values to the platform enum
+ALTER TYPE platform ADD VALUE IF NOT EXISTS 'predictit';
+ALTER TYPE platform ADD VALUE IF NOT EXISTS 'manifold';
+ALTER TYPE platform ADD VALUE IF NOT EXISTS 'metaculus';
+ALTER TYPE platform ADD VALUE IF NOT EXISTS 'futuur';
+ALTER TYPE platform ADD VALUE IF NOT EXISTS 'divvybet';
+ALTER TYPE platform ADD VALUE IF NOT EXISTS 'betdex';
+ALTER TYPE platform ADD VALUE IF NOT EXISTS 'monaco';
+ALTER TYPE platform ADD VALUE IF NOT EXISTS 'opinions';
+ALTER TYPE platform ADD VALUE IF NOT EXISTS 'probable';
+ALTER TYPE platform ADD VALUE IF NOT EXISTS 'thales';
+ALTER TYPE platform ADD VALUE IF NOT EXISTS 'limitless';
+ALTER TYPE platform ADD VALUE IF NOT EXISTS 'myriad';
+ALTER TYPE platform ADD VALUE IF NOT EXISTS 'omen';
+ALTER TYPE platform ADD VALUE IF NOT EXISTS 'augur';
+ALTER TYPE platform ADD VALUE IF NOT EXISTS 'zeitgeist';

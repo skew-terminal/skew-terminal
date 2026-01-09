@@ -326,6 +326,18 @@ export type Database = {
         | "opinions"
         | "probable"
         | "divvybet"
+        | "predictit"
+        | "manifold"
+        | "metaculus"
+        | "futuur"
+        | "betdex"
+        | "monaco"
+        | "thales"
+        | "limitless"
+        | "myriad"
+        | "omen"
+        | "augur"
+        | "zeitgeist"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -465,6 +477,18 @@ export const Constants = {
         "opinions",
         "probable",
         "divvybet",
+        "predictit",
+        "manifold",
+        "metaculus",
+        "futuur",
+        "betdex",
+        "monaco",
+        "thales",
+        "limitless",
+        "myriad",
+        "omen",
+        "augur",
+        "zeitgeist",
       ],
     },
   },
