@@ -14,6 +14,51 @@ export type Database = {
   }
   public: {
     Tables: {
+      ai_matching_cache: {
+        Row: {
+          checked_at: string | null
+          confidence: number | null
+          id: string
+          is_same_event: boolean | null
+          market1_id: string | null
+          market2_id: string | null
+          reasoning: string | null
+        }
+        Insert: {
+          checked_at?: string | null
+          confidence?: number | null
+          id?: string
+          is_same_event?: boolean | null
+          market1_id?: string | null
+          market2_id?: string | null
+          reasoning?: string | null
+        }
+        Update: {
+          checked_at?: string | null
+          confidence?: number | null
+          id?: string
+          is_same_event?: boolean | null
+          market1_id?: string | null
+          market2_id?: string | null
+          reasoning?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_matching_cache_market1_id_fkey"
+            columns: ["market1_id"]
+            isOneToOne: false
+            referencedRelation: "markets"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_matching_cache_market2_id_fkey"
+            columns: ["market2_id"]
+            isOneToOne: false
+            referencedRelation: "markets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       market_mappings: {
         Row: {
           created_at: string | null
