@@ -30,29 +30,10 @@ interface KalshiMarket {
   event_ticker?: string;
 }
 
-// Category configurations for fetching
-const CATEGORY_CONFIGS = [
-  { 
-    name: 'politics', 
-    seriesTickers: ['KXELECTION', 'KXPRES', 'KXCONGRESS', 'KXGOV'],
-    limit: 50 
-  },
-  { 
-    name: 'crypto', 
-    seriesTickers: ['KXBTC', 'KXETH', 'KXCRYPTO'],
-    limit: 50 
-  },
-  { 
-    name: 'economics', 
-    seriesTickers: ['KXFED', 'KXGDP', 'KXINFLATION', 'KXRATE', 'KXCPI'],
-    limit: 50 
-  },
-  { 
-    name: 'sports', 
-    seriesTickers: ['KXNFL', 'KXNBA', 'KXMLB', 'KXSUPERBOWL'],
-    limit: 50 
-  }
-];
+// Sleep function for rate limiting
+function sleep(ms: number): Promise<void> {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
 
 // Category mapping based on ticker prefix and title
 function getCategoryFromTicker(ticker: string, title: string): 'politics' | 'crypto' | 'sports' | 'economics' | 'entertainment' | 'other' {
@@ -137,24 +118,67 @@ function getCategoryFromTicker(ticker: string, title: string): 'politics' | 'cry
   return 'other';
 }
 
-// Fetch markets from a specific endpoint
-async function fetchMarkets(url: string): Promise<KalshiMarket[]> {
-  try {
-    const response = await fetch(url, {
-      headers: { 'Accept': 'application/json' },
-    });
+// Fetch markets with retry logic for rate limiting
+async function fetchWithRetry(url: string, maxRetries = 3): Promise<KalshiMarket[]> {
+  for (let attempt = 0; attempt < maxRetries; attempt++) {
+    try {
+      const response = await fetch(url, {
+        headers: { 'Accept': 'application/json' },
+      });
+      
+      if (response.status === 429) {
+        const waitTime = Math.pow(2, attempt) * 2000; // Exponential backoff: 2s, 4s, 8s
+        console.log(`Rate limited (429), waiting ${waitTime/1000}s before retry ${attempt + 1}/${maxRetries}...`);
+        await sleep(waitTime);
+        continue;
+      }
+      
+      if (!response.ok) {
+        console.error(`Kalshi API error for ${url}: ${response.status}`);
+        return [];
+      }
+      
+      const data = await response.json();
+      return data.markets || [];
+    } catch (error) {
+      console.error(`Error fetching ${url} (attempt ${attempt + 1}):`, error);
+      if (attempt < maxRetries - 1) {
+        await sleep(2000);
+      }
+    }
+  }
+  return [];
+}
+
+// Fetch markets in batches with delays
+async function fetchInBatches(
+  baseUrl: string, 
+  totalLimit: number, 
+  batchSize: number = 50,
+  delayBetweenBatches: number = 1500
+): Promise<KalshiMarket[]> {
+  const results: KalshiMarket[] = [];
+  
+  for (let offset = 0; offset < totalLimit; offset += batchSize) {
+    const url = `${baseUrl}&limit=${batchSize}&offset=${offset}`;
+    console.log(`Fetching batch: offset=${offset}, limit=${batchSize}`);
     
-    if (!response.ok) {
-      console.error(`Kalshi API error for ${url}: ${response.status}`);
-      return [];
+    const batch = await fetchWithRetry(url);
+    results.push(...batch);
+    
+    if (batch.length < batchSize) {
+      // No more results
+      break;
     }
     
-    const data = await response.json();
-    return data.markets || [];
-  } catch (error) {
-    console.error(`Error fetching ${url}:`, error);
-    return [];
+    // Pause between batches to avoid rate limiting
+    if (offset + batchSize < totalLimit) {
+      console.log(`Pausing ${delayBetweenBatches}ms before next batch...`);
+      await sleep(delayBetweenBatches);
+    }
   }
+  
+  return results;
 }
 
 serve(async (req) => {
@@ -163,23 +187,26 @@ serve(async (req) => {
   }
 
   try {
-    console.log('Fetching Kalshi markets from multiple categories...');
+    console.log('Fetching Kalshi markets with rate limit handling...');
 
     const supabase = createClient(SUPABASE_URL!, SUPABASE_SERVICE_ROLE_KEY!);
 
     const allMarkets: KalshiMarket[] = [];
     const categoryStats: Record<string, number> = {};
 
-    // 1. Fetch general markets (top 100 by volume)
-    console.log('Fetching general markets...');
-    const generalMarkets = await fetchMarkets(
-      `${KALSHI_API_BASE}/markets?limit=100&status=open`
+    // 1. Fetch general markets in batches (200 total, 50 per batch)
+    console.log('Fetching general markets in batches...');
+    const generalMarkets = await fetchInBatches(
+      `${KALSHI_API_BASE}/markets?status=open`,
+      200, // total limit
+      50,  // batch size
+      1500 // 1.5s between batches
     );
     allMarkets.push(...generalMarkets);
     categoryStats['general'] = generalMarkets.length;
     console.log(`Got ${generalMarkets.length} general markets`);
 
-    // 2. Try to fetch from specific event tickers for more variety
+    // 2. Fetch from specific event tickers with delays
     const eventTickers = [
       'TRUMPPOPVOTE', 'PRES', 'SENATE', 'GOVERNOR',  // Politics
       'BTCMAX', 'BTCMIN', 'ETHMAX',                   // Crypto
@@ -187,18 +214,23 @@ serve(async (req) => {
       'SUPERBOWL', 'NFLPLAYOFFS'                      // Sports
     ];
 
-    for (const eventTicker of eventTickers) {
-      try {
-        const markets = await fetchMarkets(
-          `${KALSHI_API_BASE}/markets?limit=20&status=open&event_ticker=${eventTicker}`
-        );
-        if (markets.length > 0) {
-          allMarkets.push(...markets);
-          categoryStats[eventTicker] = markets.length;
-          console.log(`Got ${markets.length} markets for ${eventTicker}`);
-        }
-      } catch (e) {
-        // Silently skip if event ticker doesn't exist
+    console.log('Fetching specific event tickers...');
+    for (let i = 0; i < eventTickers.length; i++) {
+      const eventTicker = eventTickers[i];
+      
+      // Delay between event ticker requests
+      if (i > 0) {
+        await sleep(1000); // 1s between each event ticker
+      }
+      
+      const markets = await fetchWithRetry(
+        `${KALSHI_API_BASE}/markets?limit=30&status=open&event_ticker=${eventTicker}`
+      );
+      
+      if (markets.length > 0) {
+        allMarkets.push(...markets);
+        categoryStats[eventTicker] = markets.length;
+        console.log(`Got ${markets.length} markets for ${eventTicker}`);
       }
     }
 
@@ -206,11 +238,10 @@ serve(async (req) => {
     const uniqueMarkets = new Map<string, KalshiMarket>();
     for (const market of allMarkets) {
       if (!uniqueMarkets.has(market.ticker)) {
-        // Skip obvious parlays (MULTIGAME in ticker or multiple comma-separated items)
         const commaCount = (market.title.match(/,/g) || []).length;
         const isParlay = market.ticker.includes('MULTIGAME') ||
                          market.ticker.includes('PARLAY') ||
-                         commaCount > 3; // More than 3 commas = likely parlay
+                         commaCount > 3;
         
         if (!isParlay) {
           uniqueMarkets.set(market.ticker, market);
@@ -221,12 +252,13 @@ serve(async (req) => {
     const markets = Array.from(uniqueMarkets.values());
     console.log(`Total unique markets: ${markets.length}`);
 
-    // Process and store markets
+    // Process and store markets with batching
     let marketsUpserted = 0;
     let pricesInserted = 0;
     const categoryCounts: Record<string, number> = {};
 
-    for (const market of markets) {
+    for (let i = 0; i < markets.length; i++) {
+      const market = markets[i];
       const category = getCategoryFromTicker(market.ticker, market.title);
       categoryCounts[category] = (categoryCounts[category] || 0) + 1;
       
@@ -274,6 +306,11 @@ serve(async (req) => {
       });
 
       if (!priceError) pricesInserted++;
+
+      // Progress logging every 50 markets
+      if ((i + 1) % 50 === 0) {
+        console.log(`Processed ${i + 1}/${markets.length} markets...`);
+      }
     }
 
     console.log(`Upserted ${marketsUpserted} markets, inserted ${pricesInserted} prices`);
