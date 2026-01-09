@@ -19,8 +19,8 @@ export type Database = {
           created_at: string | null
           id: string
           manual_verified: boolean | null
-          market_a_id: string
-          market_b_id: string
+          market_id_platform1: string
+          market_id_platform2: string
           platform1: string | null
           platform2: string | null
           similarity_score: number
@@ -30,8 +30,8 @@ export type Database = {
           created_at?: string | null
           id?: string
           manual_verified?: boolean | null
-          market_a_id: string
-          market_b_id: string
+          market_id_platform1: string
+          market_id_platform2: string
           platform1?: string | null
           platform2?: string | null
           similarity_score: number
@@ -41,8 +41,8 @@ export type Database = {
           created_at?: string | null
           id?: string
           manual_verified?: boolean | null
-          market_a_id?: string
-          market_b_id?: string
+          market_id_platform1?: string
+          market_id_platform2?: string
           platform1?: string | null
           platform2?: string | null
           similarity_score?: number
@@ -51,14 +51,14 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "market_mappings_market_a_id_fkey"
-            columns: ["market_a_id"]
+            columns: ["market_id_platform1"]
             isOneToOne: false
             referencedRelation: "markets"
             referencedColumns: ["id"]
           },
           {
             foreignKeyName: "market_mappings_market_b_id_fkey"
-            columns: ["market_b_id"]
+            columns: ["market_id_platform2"]
             isOneToOne: false
             referencedRelation: "markets"
             referencedColumns: ["id"]
