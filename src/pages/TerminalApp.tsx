@@ -46,7 +46,7 @@ const TerminalApp = () => {
       {/* Search Modal */}
       <SearchModal open={searchOpen} onOpenChange={setSearchOpen} />
 
-      {/* Command Bar (New TopNav) */}
+      {/* Command Bar (Top Nav) */}
       <CommandBar ref={commandBarRef} />
 
       {/* Hot Events Ticker */}

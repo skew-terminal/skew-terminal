@@ -1,4 +1,4 @@
-import { TrendingUp, Zap, Anchor, BarChart3 } from "lucide-react";
+import { BarChart3, Zap, Anchor, TrendingUp, LucideIcon } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 
 export type TabId = "markets" | "arbitrage" | "whales" | "analytics";
@@ -6,7 +6,7 @@ export type TabId = "markets" | "arbitrage" | "whales" | "analytics";
 interface Tab {
   id: TabId;
   label: string;
-  icon: typeof TrendingUp;
+  icon: LucideIcon;
   badge?: number;
   soon?: boolean;
 }
@@ -19,14 +19,14 @@ interface TerminalTabsProps {
 
 export const TerminalTabs = ({ activeTab, onTabChange, arbitrageCount = 0 }: TerminalTabsProps) => {
   const tabs: Tab[] = [
-    { id: "markets", label: "Markets", icon: TrendingUp },
+    { id: "markets", label: "Markets", icon: BarChart3 },
     { id: "arbitrage", label: "Arbitrage", icon: Zap, badge: arbitrageCount },
     { id: "whales", label: "Whales", icon: Anchor, soon: true },
-    { id: "analytics", label: "Analytics", icon: BarChart3, soon: true },
+    { id: "analytics", label: "Analytics", icon: TrendingUp, soon: true },
   ];
 
   return (
-    <div className="flex border-b border-border bg-secondary/30">
+    <div className="flex items-center border-b border-border bg-secondary/20">
       {tabs.map((tab) => {
         const Icon = tab.icon;
         const isActive = activeTab === tab.id;
@@ -37,20 +37,28 @@ export const TerminalTabs = ({ activeTab, onTabChange, arbitrageCount = 0 }: Ter
             key={tab.id}
             onClick={() => !isDisabled && onTabChange(tab.id)}
             disabled={isDisabled}
-            className={`relative flex items-center gap-2 px-4 py-2 transition-all font-mono text-xs uppercase tracking-wider ${
-              isActive
-                ? "bg-background text-primary border-b-2 border-primary"
-                : isDisabled
-                ? "text-muted-foreground/40 cursor-not-allowed"
+            className={`
+              relative flex items-center gap-1.5 px-4 py-2 font-mono text-xs uppercase tracking-wider transition-all
+              ${isActive 
+                ? "text-foreground border-b-2 border-primary bg-background" 
                 : "text-muted-foreground hover:text-foreground hover:bg-secondary/50"
-            }`}
+              }
+              ${isDisabled ? "opacity-50 cursor-not-allowed" : "cursor-pointer"}
+            `}
           >
-            <Icon className="h-3.5 w-3.5" />
+            <Icon className={`h-3.5 w-3.5 ${isActive ? "text-primary" : ""}`} />
             <span>{tab.label}</span>
             
             {tab.badge !== undefined && tab.badge > 0 && (
               <Badge 
-                className="ml-1 h-4 min-w-[1rem] px-1 bg-accent text-accent-foreground font-mono text-[9px] font-bold"
+                variant="outline" 
+                className={`
+                  ml-1 px-1.5 py-0 font-mono text-[8px] 
+                  ${isActive 
+                    ? "border-accent/50 bg-accent/10 text-accent" 
+                    : "border-muted-foreground/30 text-muted-foreground"
+                  }
+                `}
               >
                 {tab.badge}
               </Badge>
@@ -59,7 +67,7 @@ export const TerminalTabs = ({ activeTab, onTabChange, arbitrageCount = 0 }: Ter
             {tab.soon && (
               <Badge 
                 variant="outline" 
-                className="ml-1 border-muted-foreground/30 text-muted-foreground/60 font-mono text-[7px] px-1 py-0"
+                className="ml-1 px-1 py-0 font-mono text-[7px] border-muted-foreground/30 text-muted-foreground"
               >
                 SOON
               </Badge>
