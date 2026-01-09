@@ -37,6 +37,135 @@ interface SpreadOpportunity {
   potential_profit: number;
 }
 
+// Parlay detection patterns
+const PARLAY_PATTERNS = [
+  /(.+)\s+AND\s+(.+)/i,           // "Lakers AND Celtics win"
+  /(.+)\s+&\s+(.+)/i,             // "Lakers & Celtics"
+  /(.+),\s*(.+)\s+both\s+win/i,   // "Lakers, Celtics both win"
+  /parlay[:\s]+(.+)/i,            // "Parlay: ..."
+];
+
+// Team name normalization for matching
+const TEAM_ALIASES: Record<string, string[]> = {
+  'lakers': ['los angeles lakers', 'la lakers'],
+  'celtics': ['boston celtics'],
+  'warriors': ['golden state warriors', 'gs warriors', 'gsw'],
+  'bucks': ['milwaukee bucks'],
+  'nuggets': ['denver nuggets'],
+  'heat': ['miami heat'],
+  'suns': ['phoenix suns'],
+  'eagles': ['philadelphia eagles', 'philly eagles'],
+  'chiefs': ['kansas city chiefs', 'kc chiefs'],
+  'bills': ['buffalo bills'],
+  'ravens': ['baltimore ravens'],
+  'lions': ['detroit lions'],
+  'cowboys': ['dallas cowboys'],
+  'packers': ['green bay packers', 'gb packers'],
+};
+
+// Extract parlay components from title
+function extractParlayComponents(title: string): string[] | null {
+  for (const pattern of PARLAY_PATTERNS) {
+    const match = title.match(pattern);
+    if (match) {
+      return match.slice(1).map(s => s.trim().toLowerCase());
+    }
+  }
+  return null;
+}
+
+// Normalize team name for matching
+function normalizeTeam(name: string): string {
+  const lower = name.toLowerCase().trim();
+  
+  for (const [canonical, aliases] of Object.entries(TEAM_ALIASES)) {
+    if (lower.includes(canonical) || aliases.some(a => lower.includes(a))) {
+      return canonical;
+    }
+  }
+  
+  const winMatch = lower.match(/(.+?)\s+win/);
+  if (winMatch) return winMatch[1].trim();
+  
+  return lower;
+}
+
+// Find single market matching a parlay component
+function findSingleMarket(
+  component: string, 
+  singlePrices: Map<string, PriceData>
+): PriceData | null {
+  const normalizedComponent = normalizeTeam(component);
+  
+  for (const [_, price] of singlePrices) {
+    const marketTitle = price.market.title.toLowerCase();
+    const normalizedMarket = normalizeTeam(marketTitle);
+    
+    if (
+      normalizedMarket.includes(normalizedComponent) ||
+      normalizedComponent.includes(normalizedMarket) ||
+      marketTitle.includes(normalizedComponent)
+    ) {
+      return price;
+    }
+  }
+  
+  return null;
+}
+
+// Calculate parlay arbitrage opportunities
+function findParlayArbitrage(
+  parlayPrice: PriceData,
+  singlePrices: Map<string, PriceData>
+): SpreadOpportunity | null {
+  const components = extractParlayComponents(parlayPrice.market.title);
+  if (!components || components.length < 2) return null;
+  
+  console.log(`Checking parlay: "${parlayPrice.market.title}" -> components: ${components.join(', ')}`);
+  
+  const matchedSingles: PriceData[] = [];
+  for (const component of components) {
+    const single = findSingleMarket(component, singlePrices);
+    if (single) {
+      matchedSingles.push(single);
+      console.log(`  Found match: "${component}" -> "${single.market.title}" @ ${single.yes_price}`);
+    } else {
+      console.log(`  No match for: "${component}"`);
+    }
+  }
+  
+  if (matchedSingles.length !== components.length) return null;
+  
+  // Calculate implied parlay price from singles (multiply probabilities)
+  const impliedParlayPrice = matchedSingles.reduce((acc, s) => acc * s.yes_price, 1);
+  const parlayYesPrice = parlayPrice.yes_price;
+  
+  console.log(`  Parlay: $${parlayYesPrice.toFixed(3)}, Implied: $${impliedParlayPrice.toFixed(3)}`);
+  
+  const skew = ((impliedParlayPrice - parlayYesPrice) / parlayYesPrice) * 100;
+  
+  if (Math.abs(skew) < 2) return null; // Minimum 2% skew for parlays
+  
+  const buyPlatform = skew > 0 ? parlayPrice.platform : matchedSingles[0].platform;
+  const sellPlatform = skew > 0 ? matchedSingles[0].platform : parlayPrice.platform;
+  const buyPrice = skew > 0 ? parlayYesPrice : impliedParlayPrice;
+  const sellPrice = skew > 0 ? impliedParlayPrice : parlayYesPrice;
+  
+  const potentialProfit = Math.abs(impliedParlayPrice - parlayYesPrice) * 100;
+  
+  console.log(`  PARLAY ARB: ${Math.abs(skew).toFixed(1)}% skew, $${potentialProfit.toFixed(2)} profit potential`);
+  
+  return {
+    market_id: parlayPrice.market_id,
+    buy_platform: buyPlatform + ' (parlay)',
+    sell_platform: sellPlatform + ' (singles)',
+    buy_price: buyPrice,
+    sell_price: sellPrice,
+    skew_percentage: Math.round(Math.abs(skew) * 100) / 100,
+    potential_profit: Math.round(potentialProfit * 100) / 100
+  };
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -85,7 +214,6 @@ serve(async (req) => {
     const titleMatches = new Map<string, PriceData[]>();
     
     for (const priceRow of prices || []) {
-      // Handle Supabase's array return for joined relations
       const marketArr = priceRow.market as unknown as MarketData[];
       const market = Array.isArray(marketArr) ? marketArr[0] : marketArr;
       if (!market) continue;
@@ -95,20 +223,17 @@ serve(async (req) => {
         market
       };
 
-      // Store latest price per market for mapping lookups
       const existing = priceByMarket.get(price.market_id);
       if (!existing || new Date(price.recorded_at) > new Date(existing.recorded_at)) {
         priceByMarket.set(price.market_id, price);
       }
 
-      // Group by exact market_id
       const marketId = price.market_id;
       if (!marketPrices.has(marketId)) {
         marketPrices.set(marketId, []);
       }
       marketPrices.get(marketId)!.push(price);
 
-      // Also group by normalized title for fuzzy matching
       const normalizedTitle = normalizeTitle(market.title);
       if (!titleMatches.has(normalizedTitle)) {
         titleMatches.set(normalizedTitle, []);
@@ -120,12 +245,10 @@ serve(async (req) => {
 
     // Find arbitrage opportunities within same market (different platforms)
     for (const [marketId, priceList] of marketPrices) {
-      // Get latest price per platform
       const latestByPlatform = getLatestByPlatform(priceList);
       
       if (latestByPlatform.size < 2) continue;
 
-      // Compare all platform pairs
       const platforms = Array.from(latestByPlatform.keys());
       
       for (let i = 0; i < platforms.length; i++) {
@@ -133,11 +256,9 @@ serve(async (req) => {
           const p1 = latestByPlatform.get(platforms[i])!;
           const p2 = latestByPlatform.get(platforms[j])!;
           
-          // Check YES arbitrage: buy YES on cheaper, sell on expensive
           const yesSpread = findYesArbitrage(p1, p2, marketId);
           if (yesSpread) opportunities.push(yesSpread);
           
-          // Check NO arbitrage
           const noSpread = findNoArbitrage(p1, p2, marketId);
           if (noSpread) opportunities.push(noSpread);
         }
@@ -157,7 +278,6 @@ serve(async (req) => {
           const p1 = latestByPlatform.get(platforms[i])!;
           const p2 = latestByPlatform.get(platforms[j])!;
           
-          // Use first market_id as reference
           const refMarketId = p1.market_id;
           
           const yesSpread = findYesArbitrage(p1, p2, refMarketId);
@@ -175,7 +295,7 @@ serve(async (req) => {
         const priceB = priceByMarket.get(mapping.market_b_id);
         
         if (!priceA || !priceB) continue;
-        if (priceA.platform === priceB.platform) continue; // Skip same platform
+        if (priceA.platform === priceB.platform) continue;
         
         const yesSpread = findYesArbitrage(priceA, priceB, priceA.market_id);
         if (yesSpread && !isDuplicate(opportunities, yesSpread)) {
@@ -187,6 +307,30 @@ serve(async (req) => {
         if (noSpread && !isDuplicate(opportunities, noSpread)) {
           opportunities.push(noSpread);
         }
+      }
+    }
+
+    // === PARLAY ARBITRAGE ===
+    console.log('Checking for parlay arbitrage opportunities...');
+    
+    // Get all single-game prices from Azuro (sports)
+    const azuroSingles = new Map<string, PriceData>();
+    for (const [_, price] of priceByMarket) {
+      if (price.platform === 'azuro') {
+        azuroSingles.set(price.market_id, price);
+      }
+    }
+    
+    console.log(`Found ${azuroSingles.size} Azuro single markets for parlay matching`);
+    
+    // Check each Kalshi market for parlay patterns
+    for (const [_, price] of priceByMarket) {
+      if (price.platform !== 'kalshi') continue;
+      
+      const parlayArb = findParlayArbitrage(price, azuroSingles);
+      if (parlayArb && !isDuplicate(opportunities, parlayArb)) {
+        opportunities.push(parlayArb);
+        console.log(`Found parlay arb: ${parlayArb.skew_percentage}% on "${price.market.title.substring(0, 50)}"`);
       }
     }
 
@@ -217,7 +361,7 @@ serve(async (req) => {
           potential_profit: opp.potential_profit,
           is_active: true,
           detected_at: new Date().toISOString(),
-          expires_at: new Date(Date.now() + 5 * 60 * 1000).toISOString() // 5 min expiry
+          expires_at: new Date(Date.now() + 5 * 60 * 1000).toISOString()
         })));
 
       if (insertError) {
@@ -225,7 +369,6 @@ serve(async (req) => {
       }
     }
 
-    // Get top opportunities for response
     const topOpps = significantOpps
       .sort((a, b) => b.skew_percentage - a.skew_percentage)
       .slice(0, 10);
@@ -235,6 +378,7 @@ serve(async (req) => {
         success: true,
         total_opportunities: opportunities.length,
         significant_opportunities: significantOpps.length,
+        parlay_arbs: opportunities.filter(o => o.buy_platform.includes('parlay') || o.sell_platform.includes('parlay')).length,
         top_spreads: topOpps,
         timestamp: new Date().toISOString()
       }),
@@ -260,7 +404,7 @@ function normalizeTitle(title: string): string {
     .replace(/\s+/g, ' ')
     .trim()
     .split(' ')
-    .slice(0, 5) // First 5 words
+    .slice(0, 5)
     .join(' ');
 }
 
@@ -278,7 +422,6 @@ function getLatestByPlatform(prices: PriceData[]): Map<string, PriceData> {
 }
 
 function findYesArbitrage(p1: PriceData, p2: PriceData, marketId: string): SpreadOpportunity | null {
-  // Buy YES where cheaper, sell where more expensive
   const buyP1 = p1.yes_price < p2.yes_price;
   const buyPrice = buyP1 ? p1.yes_price : p2.yes_price;
   const sellPrice = buyP1 ? p2.yes_price : p1.yes_price;
@@ -289,7 +432,6 @@ function findYesArbitrage(p1: PriceData, p2: PriceData, marketId: string): Sprea
   
   if (skew <= 0) return null;
   
-  // Potential profit per $100 bet
   const potentialProfit = (sellPrice - buyPrice) * 100;
   
   return {
@@ -304,7 +446,6 @@ function findYesArbitrage(p1: PriceData, p2: PriceData, marketId: string): Sprea
 }
 
 function findNoArbitrage(p1: PriceData, p2: PriceData, marketId: string): SpreadOpportunity | null {
-  // Buy NO where cheaper, sell where more expensive
   const buyP1 = p1.no_price < p2.no_price;
   const buyPrice = buyP1 ? p1.no_price : p2.no_price;
   const sellPrice = buyP1 ? p2.no_price : p1.no_price;
