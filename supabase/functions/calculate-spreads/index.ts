@@ -200,7 +200,7 @@ serve(async (req) => {
     // Get market mappings from match-markets function
     const { data: mappings } = await supabase
       .from('market_mappings')
-      .select('market_a_id, market_b_id, similarity_score');
+      .select('market_id_platform1, market_id_platform2, similarity_score');
 
     console.log(`Found ${mappings?.length || 0} market mappings`);
 
@@ -291,8 +291,8 @@ serve(async (req) => {
     // Check opportunities from market_mappings (matched markets across platforms)
     if (mappings && mappings.length > 0) {
       for (const mapping of mappings) {
-        const priceA = priceByMarket.get(mapping.market_a_id);
-        const priceB = priceByMarket.get(mapping.market_b_id);
+        const priceA = priceByMarket.get(mapping.market_id_platform1);
+        const priceB = priceByMarket.get(mapping.market_id_platform2);
         
         if (!priceA || !priceB) continue;
         if (priceA.platform === priceB.platform) continue;
