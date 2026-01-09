@@ -17,3 +17,51 @@ verify_jwt = false
 
 [functions.calculate-spreads]
 verify_jwt = false
+
+[functions.match-markets]
+verify_jwt = false
+
+[functions.fetch-predictit]
+verify_jwt = false
+
+[functions.fetch-manifold]
+verify_jwt = false
+
+[functions.fetch-metaculus]
+verify_jwt = false
+
+[functions.fetch-futuur]
+verify_jwt = false
+
+[functions.fetch-divvybet]
+verify_jwt = false
+
+[functions.fetch-betdex]
+verify_jwt = false
+
+[functions.fetch-monaco]
+verify_jwt = false
+
+[functions.fetch-opinions]
+verify_jwt = false
+
+[functions.fetch-probable]
+verify_jwt = false
+
+[functions.fetch-thales]
+verify_jwt = false
+
+[functions.fetch-limitless]
+verify_jwt = false
+
+[functions.fetch-myriad]
+verify_jwt = false
+
+[functions.fetch-omen]
+verify_jwt = false
+
+[functions.fetch-augur]
+verify_jwt = false
+
+[functions.fetch-zeitgeist]
+verify_jwt = false
